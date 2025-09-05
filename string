@@ -1,0 +1,125 @@
+0       regex    [Ff][Ii][Ll][Ee]\x20?[Ss][Yy][Ss][Tt][Ee][Mm]    String
+>0      string   x                                                (%s)
+
+0       string   NAND              String
+>0      string   x                 (%s)
+0       string   nand              String
+>0      string   x                 (%s)
+
+0       string   NOR\20            String
+>0      string   x                 (%s)
+0       string   nor\20            String
+>0      string   x                 (%s)
+
+0       string   OMAP              String
+>0      string   x                 (%s)
+
+0       string   MOAP              String
+>0      string   x                 (%s)
+
+0       string   ITRON             String
+>0      string   x                 (%s)
+0       regex    [Ii]tron          String
+>0      string   x                 (%s)
+
+0       string   NUCLEUS           String
+>0      string   x                 (%s)
+0       regex    [Nn]ucleus        String
+>0      string   x                 (%s)
+
+0       string   SYMBIAN           String
+>0      string   x                 (%s)
+0       regex    [Ss]ymbian        String
+>0      string   x                 (%s)
+
+0       string   LINUX              String
+>0      string   x                 (%s)
+0       regex    [Ll]inux           String
+>0      string   x                 (%s)
+
+
+
+
+0       string   SAMGUNG            String
+>0      string   x                 (%s)
+0       regex    [Ss]amsung         String
+>0      string   x                 (%s)
+
+0       string   XSR               String
+>0      string   x                 (%s)
+0       regex    [Xx]sr            String
+>0      string   x                 (%s)
+
+0       string   FSR               String
+>0      string   x                 (%s)
+0       regex    [Ff]sr            String
+>0      string   x                 (%s)
+
+0       regex    [Uu][Nn][Ii][Ss][Tt][Oo][Rr][Ee]          String
+>0      string   x                                         (%s)
+
+0       regex    [Uu][Nn][Ii][Ff][Ss]                      String
+>0      string   x                                         (%s)
+
+0       regex    [Po][Oo][Cc][Kk][Ee][Tt][Ff][Ss]          String
+>0      string   x                                         (%s)
+
+
+
+
+
+0       regex    [Ee][Ff][Ss]2                             String
+>0      string   x                                         (%s)
+
+0       string   EFSSuper                                  String
+>0      string   x                                         (%s)
+
+
+
+
+
+0       regex    [Dd][Aa][Tt][Aa][Ll][Ii][Gg][Hh][Tt]      String
+>0      string   x                                         (%s)
+
+0       string   DL_FS                                     String
+>0      string   x                                         (%s)
+
+0       regex   [Ff][Ll][Aa][Ss][Hh][Ff][Xx]               String
+>0      string   x                                         (%s)
+
+0       string   MAST                                      Reliance Filesystem Header
+
+
+
+
+
+0       string   TOSHIBA           String
+>0      string   x                 (%s)
+0       regex    [Tt]oshiba        String
+>0      string   x                 (%s)
+
+0       string   FUGUE             String
+>0      string   x                 (%s)
+0       regex    [Ff]ugue          String
+>0      string   x                 (%s)
+
+
+
+
+
+
+
+0       string   HYNIX              String
+>0      string   x                  (%s)
+0       regex    [Hh]ynix           String
+>0      string   x                  (%s)
+
+0       string   MICRON            String
+>0      string   x                 (%s)
+0       regex    [Mm]icron         String
+>0      string   x                 (%s)
+
+0       string   PHOENIX           String
+>0      string   x                 (%s)
+0       regex    [Pp]hoenix        String
+>0      string   x                 (%s)

@@ -1,0 +1,311 @@
+# Note
+
+# V601SH
+# 82 00 00 11 5D 00
+
+# SH/D904i OOB
+# ?? B8 ?? C0 FF FF FF ?? ?? ?? ?? ?? ?? ?? FF FF
+
+# Toshiba OOB, index: 13-14 (big) every 0x200
+# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? FF FF FF
+
+# New Toshiba OOB
+# 52 74 87 25 76 A7 54 9D D8 CF
+
+# SO505i OOB
+# FF FF FF FF FF FF XX XX FF FF FF XX XX FF FF FF 
+# 0x200
+
+# F900i OOB
+# XX XX XX FF FF FF 55 55 XX XX YY YY FF FF FF FF 
+# 0x200
+
+
+#################################
+##            FTL              ##
+#################################
+
+0x0     string   \xFF\xFF\xFF\xFF\xF2  D505i/D505iS Structure
+>6      string   !\xFF\xFF\xF2         {invalid}
+>0xA    string   !\xFF\xFF\xF2         {invalid}
+>0xE    string   !\xFF\xFF             {invalid}
+
+0x10    string   \x00\xFF\xFF\xFF\xFF\xFF  M4 Structure{strlen:2}
+>0x19   string   !\x55\x55\x55\xFF\xFF     {invalid}
+>0xA    string   x                         {string}(%s)
+
+0       string   \x44\x41\x54\x41\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 D900i Structure
+
+0       string   \x0F\xF0\xFF\xFF\x33\xCC\xFF\xFF\xFF V501T FTL
+
+0xC     string   \xF0\xF0\x00\xFF      SH900i FTL Footer
+>1      string   !\x00\x00             {invalid}
+>5      string   !\x00\x00             {invalid}
+
+2       string   ny\x20Format          Sony Ericsson Custom FS
+
+4       string   \xA3\xC5              Softbank C5A3 FS
+>0x9    string   !\x65                 {invalid}
+>0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
+
+0       string   \x13\x03CIS           Fujitsu SoFFS,
+>2      string   x                     (%s)
+>8      string   !FTL100               {invalid}
+
+8       string   \xF0\xFF              00F0F0 Structure
+>0xD    string   !\x00\xF0\xF0         {invalid}
+
+
+0       string   \xB4\xB4              B4B4 FTL Data Metablock,
+>0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
+>0x10   string   !\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF {invalid}
+>0x2    uleshort x                     Value1: %d
+
+0       string   SSR200                Samsung SSR200 FTL
+
+0       string   \x91\x5A\x49\x2C      Samsung Early XSR FTL
+
+0       string   \x64                  Samsung XSR1 FTL
+>12     string   !XSR1                 {invalid}
+
+0       string   \x64                  Samsung XSR2 FTL
+>12     string   !XSR2                 {invalid}
+
+0       string   \x64                  Samsung XSR3 FTL
+>16     string   !XSR3                 {invalid}
+
+0       string   XSR1d                 Samsung XSR1d FTL
+
+0       string   XSRPART               Samsung XSR FTL Partition
+>0      string   x                     (%s)
+
+0       string   FSR_STL               Samsung FSR FTL STL,
+>9      ubyte    x                     version %d.
+>0xA    ubyte    x                     %d.
+>0xB    ubyte    x                     %d
+>9      string   \x01\x01\x01          (FSR_F)
+>9      string   \x01\x02\x01          (FSR_ll)
+>0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
+
+0       string   FSRPART               Samsung FSR FTL Partition
+>0      string   x                     (%s)
+
+0       string   \xCC\xDDDL_FS         Datalight FlashFX FTL{strlen:4},
+>0x7    string   x                     version: {string}%s
+>0xB    string   !\xFF\xFF\xFF\xFF\xFF {invalid}
+
+0       string   \x04\x19\xFF\xFF      Fugue FAT FTL,
+>4      ubelong  x                     block generation %s,
+>8      ubeshort x                     block index %s
+>10     string   !\x55\xAA             {invalid}
+
+
+#################################
+##        File System          ##
+#################################
+
+0       string   \x7E\x00\x00\xEA  EPOC32 ROM
+>6      string   !\x00\xEB         {invalid}
+
+0       string   ROFS0             ROFS filesystem
+0       string   ROFS1             ROFS filesystem
+0       string   ROFS2             ROFS filesystem
+0       string   ROFS3             ROFS filesystem
+0       string   ROFS4             ROFS filesystem
+
+0       string   \xAA\x73\xEE\x55\xDB\xBD\x5E\xE3       Qualcomm EFS2 filesystem
+0       string   \x87\x67\x85\x34\x59\x77\x34\x92       Qualcomm Factory Image FS filesystem (CEFS)
+0       string   \x01\x00\x00\x00\x65\x01\x00\x00FS     FactorFs.bin (SGX_eng.exe)
+0       string   \x01\x00\x00\x00\x01\x00\x00\x00System Rsrc.cnt (SGX_eng.exe)
+
+
+0x1FE           string   \x55\xAA          FAT filesystem BPB,
+>3              string   !\x00             {strlen:1}
+>>3             string   x                 OEMName: {string}"%s"
+>4              string   !\x00             {strlen:1}
+>>4             string   x                 {string}"%s"
+>5              string   !\x00             {strlen:1}
+>>5             string   x                 {string}"%s"
+>6              string   !\x00             {strlen:1}
+>>6             string   x                 {string}"%s"
+>7              string   !\x00             {strlen:1}
+>>7             string   x                 {string}"%s"
+>8              string   !\x00             {strlen:1}
+>>8             string   x                 {string}"%s"
+>9              string   !\x00             {strlen:1}
+>>9             string   x                 {string}"%s"
+>0xA            string   !\x00             {strlen:1}
+>>0xA           string   x                 {string}"%s",
+>0xB            uleshort x                 Sector Size: %d,
+>0xB            uleshort !512              
+>>0xB           uleshort !1024             
+>>>0xB          uleshort !2048             
+>>>>0xB         uleshort !4096             {invalid}
+>0xD            ubyte    x                 SecPerClus: %d,
+>0xD            ubyte    !1                
+>>0xD           ubyte    !2                
+>>>0xD          ubyte    !4                
+>>>>0xD         ubyte    !8                
+>>>>>0xD        ubyte    !16               
+>>>>>>0xD       ubyte    !32               
+>>>>>>>0xD      ubyte    !64               
+>>>>>>>>0xD     ubyte    !128              {invalid}
+>0xE            uleshort x                 RsvdSecCnt: %d,
+>0xE            uleshort 0                 {invalid}
+>0x15           ubyte    !0xF0             
+>>0x15          ubyte    !0xF8             
+>>>0x15         ubyte    !0xF9             
+>>>>0x15        ubyte    !0xFA             
+>>>>>0x15       ubyte    !0xFB             
+>>>>>>0x15      ubyte    !0xFC             
+>>>>>>>0x15     ubyte    !0xFD             
+>>>>>>>>0x15    ubyte    !0xFE             
+>>>>>>>>>0x15   ubyte    !0xFF             {invalid}
+# FAT12/16
+>0x11            uleshort !0                Type: FAT12/16,
+>>0x36           string   !\x00             {strlen:1}
+>>>0x36          string   x                 {string}FilSysType: "%s"
+>>0x37           string   !\x00             {strlen:1}
+>>>0x37          string   x                 {string}"%s"
+>>0x38           string   !\x00             {strlen:1}
+>>>0x38          string   x                 {string}"%s"
+>>0x39           string   !\x00             {strlen:1}
+>>>0x39          string   x                 {string}"%s"
+>>0x3A           string   !\x00             {strlen:1}
+>>>0x3A          string   x                 {string}"%s"
+>>0x3B           string   !\x00             {strlen:1}
+>>>0x3B          string   x                 {string}"%s"
+>>0x3C           string   !\x00             {strlen:1}
+>>>0x3C          string   x                 {string}"%s"
+>>0x3D           string   !\x00             {strlen:1}
+>>>0x3D          string   x                 {string}"%s"
+# FAT32
+>0x11            uleshort 0                 Type: FAT32,
+>>0x52           string   !\x00             {strlen:1}
+>>>0x52          string   x                 {string}FilSysType: "%s"
+>>0x53           string   !\x00             {strlen:1}
+>>>0x53          string   x                 {string}"%s"
+>>0x54           string   !\x00             {strlen:1}
+>>>0x54          string   x                 {string}"%s"
+>>0x55           string   !\x00             {strlen:1}
+>>>0x55          string   x                 {string}"%s"
+>>0x56           string   !\x00             {strlen:1}
+>>>0x56          string   x                 {string}"%s"
+>>0x57           string   !\x00             {strlen:1}
+>>>0x57          string   x                 {string}"%s"
+>>0x58           string   !\x00             {strlen:1}
+>>>0x58          string   x                 {string}"%s"
+>>0x59           string   !\x00             {strlen:1}
+>>>0x59          string   x                 {string}"%s"
+
+
+3       string   \x03\x00\x05\x00\x05\xD2\xFF\xFF\x00  CG2 Flex
+0       string   \xEb\x52\x90NTFS\x20\x20\x20\x20      NTFS filesystem
+0       string   NXSB                                  APFS filesystem
+
+0       string   P\x00F\x00S\x00F\x00F\x00S\x00           Old ffs filesystem
+
+
+#################################
+##           String            ##
+#################################
+
+0       string   MIDlet-Name:      JAD's App Name String (MIDlet-Name)
+0       regex    AppName\x20?=     JAM's App Name String (AppName)
+
+0       string   FAT12             FAT String (FAT12)
+0       string   FAT16             FAT String (FAT16)
+0       string   FAT32             FAT String (FAT32)
+0       string   NECVOL            FAT String (NECVOL)
+#0       string   MSWIN4.1          FAT String (MSWIN4.1)
+#0       string   MSDOS5.0          FAT String (MSDOS5.0)
+0       string   MSWIN             FAT String
+>0      string   x                 (%s)
+0       string   MSDOS             FAT String
+>0      string   x                 (%s)
+0       string   DLDOS             FAT String
+>0      string   x                 (%s)
+0       string   NECVOL            FAT String (libFAT)
+0       string   GR-FILE           FAT String (GR-FILE)
+0       string   NO\x20NAME        FAT String (NO NAME)
+0       string   $RFS_LOGLO$       Samsung RFS Root File String ($RFS_LOGLO$)
+
+
+#0       string   FSR_STL           FSR_STL String
+#>0      string   x                 (%s)
+
+0       string   XSR_1.            String
+>0      string   x                 (%s)
+
+0       string   FSR_1.            String
+>0      string   x                 (%s)
+
+5       string   nvm/              EFS1 (Embedded File System)
+>0      string   !\xFF\xFF\xFF\xFF      {invalid}
+>5      string   x                 (%s)
+
+0       string   PAFS              String
+>0      string   x                 (%s)
+
+0       string   IMRC              String
+>0      string   x                 (%s)
+
+0       string   NTFS              String
+>0      string   x                 (%s)
+
+0       regex    [Dd][Aa][Tt][Aa][Ll][Ii][Gg][Hh][Tt]      String
+>0      string   x                                         (%s)
+
+0       string   DL_FS                                     String
+>0      string   x                                         (%s)
+
+0       regex    [Ff][Ll][Aa][Ss][Hh][Ff][Xx]              String
+>0      string   x                                         (%s)
+
+
+#################################
+##        Unconfirmed          ##
+#################################
+
+#https://github.com/nilfs-dev/nilfs2-module/blob/master/fs/nilfs2_fs.h
+0       string   \x1e\xaf\xfa\x11  NILFS2 filesystem
+
+# https://github.com/torvalds/linux/blob/master/include/uapi/linux/magic.h
+0       string   \xF2\xF5\x20\x10  F2FS filesystem
+0       string   \x53\x46\x41\x4F  AFS filesystem
+
+# https://android.googlesource.com/kernel/tegra.git/+/android-tegra-3.10/fs/logfs/logfs_abi.h
+0       string   \x7a\x3a\x8e\x5c\xb9\xd5\xbf\x67      LogFS filesystem
+0       string   \x67\xbf\xd5\xb9\x5c\x8e\x3a\x7a      LogFS filesystem (big)
+0       string   \xc9\x7e\x81\x68                      LOGFS filesystem (U32)
+# https://github.com/prasad-joshi/logfsprogs/commit/f291a6a57e9639ea63203803e0807ea1cb2ee394
+0       string   \xb2\x1f\x20\x5a\xc9\x7e\x81\x68      Old LOGFS filesystem 
+0       string   \x68\x81\x7e\xc9\x5a\x20\x1f\xb2      Old LOGFS filesystem (big)
+
+
+
+# https://android-review.linaro.org/plugins/gitiles/kernel/experimental/+/1e86240f3fd33f8052141778ad3dffe2c96184d7/include/linux/jffs.h
+0                   uleshort    0x1984      JFFS filesystem, little endian
+>2                  uleshort    !0xE001
+>>2                 uleshort    !0xE002
+>>>2                uleshort    !0x2003
+>>>>2               uleshort    !0x2004
+>>>>>2              uleshort    !0x2006
+>>>>>>2             uleshort    !0xE008
+>>>>>>>2            uleshort    !0xE009     {invalid}
+>4                  lelong      0           {invalid}
+>4                  lelong      <0          {invalid}
+#>4                  lelong      x           {many}{jump:%d}
+
+0                   ubeshort    0x1984      JFFS filesystem, big endian
+>2                  ubeshort    !0xE001
+>>2                 ubeshort    !0xE002
+>>>2                ubeshort    !0x2003
+>>>>2               ubeshort    !0x2004
+>>>>>2              ubeshort    !0x2006
+>>>>>>2             ubeshort    !0xE008
+>>>>>>>2            ubeshort    !0xE009     {invalid}
+>4                  belong      0           {invalid}
+>4                  belong      <0          {invalid}
+#>4                  belong      x           {many}{jump:%d}
+
