@@ -19,8 +19,8 @@ utf8_pattern = re.compile(
 )
 
 def find_jad_offset(dump_data, appname_off):
-    min_search = appname_off-0x4000
-    max_search = appname_off+0x4000
+    min_search = max(appname_off-0x4000, 0)
+    max_search = min(appname_off+0x4000, len(dump_data))
     utf8_matches = utf8_pattern.finditer(dump_data[min_search:max_search])
 
     for m in utf8_matches:
@@ -88,7 +88,7 @@ def carve_jad_and_jar(dump_data, output_dir):
             jad_end = pkoff
         
         jad_content = dump_data[jad_start:jad_end]
-        if jad_content.find(b"MIDlet-Jar-URL:") == -1 or jad_content.find(b"MIDlet-Jar-Size") == -1:
+        if jad_content.find(b"MIDlet-Jar-URL:") == -1 or jad_content.find(b"MIDlet-Jar-Size:") == -1:
             continue
 
         #print(hex(jad_start), hex(jad_end), jad_content)
