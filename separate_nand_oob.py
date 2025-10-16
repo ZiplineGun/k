@@ -25,7 +25,6 @@ def main(mixdump_path, layout=None, out_nand=None, out_oob=None):
     print(f"Done")
 
 def separate_nand_oob(mixdump_path, data_size, oob_size, out_nand=None, out_oob=None):
-
     print(f"Started separating {data_size}/{oob_size}")
     
     with open(mixdump_path, "rb") as in_nandf, open(out_nand, "wb") as out_nandf, open(out_oob, "wb") as out_oobf:
@@ -48,4 +47,6 @@ if __name__ == "__main__":
     parser.add_argument("-oo", "--output_oob", default=None)
     args = parser.parse_args()
 
-    main(args.input, layouts[args.layout], args.output_nand, args.output_oob)
+    layout = None if args.layout is None else layouts[args.layout]
+
+    main(args.input, layout, args.output_nand, args.output_oob)
