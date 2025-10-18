@@ -1,25 +1,68 @@
-# Note
+# FTL note that cannot be recorded as magic
 
-# V601SH
-# 82 00 00 11 5D 00
+# V601SH SuperAND
+# [?? ?? ?? ??] FF FF FF FF [?? ??] [?? ??] [?? ??] FF FF
+# little
 
 # SH/D904i OOB
-# ?? B8 ?? C0 FF FF FF ?? ?? ?? ?? ?? ?? ?? FF FF
+# YY B8 XX XX FF FF ?Z ?? ?? ?? ?? ?? ?? ?? FF FF
+# fragment_index = Z, every 0x1000, little
+#
+# YY B8 ?? C4 FF FF FF ?? ?? ?? ?? ?? ?? ?? FF FF
+# logical_sector_number = (XX XX) << 8 | YY, every 0x10
 
-# Toshiba OOB, index: 13-14 (big) every 0x200
-# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? FF FF FF
+# SO505i (Old Toshiba) OOB
+# FF FF FF FF FF FF XX XX FF FF FF YY YY FF FF FF 
+# X: block_index (big), Within one block, the same block_index repeats every 0x10.
+# XX = YY
+
+# Toshiba OOB
+# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? XX XX ??
+# XX: block_index (big), At the head and tail every 0x200.
+# g_w54tMode: (index & 0x7FFF) >> 1
+# GR-FILE
 
 # New Toshiba OOB
-# 52 74 87 25 76 A7 54 9D D8 CF
+# ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? XX XX XX XX ?? ??
+# XX: block_index (big), At the head and tail every 0x200.
+# GR-FILE
 
-# SO505i OOB
-# FF FF FF FF FF FF XX XX FF FF FF XX XX FF FF FF 
-# 0x200
-
-# F900i OOB
+# F900i OOB (maybe M-Systems TrueFFS INFTL)
 # XX XX XX FF FF FF 55 55 XX XX YY YY FF FF FF FF 
 # 0x200
 
+# F505i OOB
+# FF FF FF ?? FE FF ?? ?? ?? ?? FF FF FF FF ?? ??
+
+# J-T08 OOB
+# ?? ?? ?? ?? FF FF ?? ?? FF FF FF ?? ?? FF FF FF
+
+# SSR200
+# XX XX XX 00 YY YY YY 00 FF FF FF FF FF ?? ?? ??
+# LSN: XX == YY, little
+
+# OLD SSR200
+# XX XX XX 00 FF FF FF FF FF FF FF FF FF ?? ?? ??
+# LSN: XX, little
+
+# CDM-9950 OOB 
+# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? XX XX XX
+# XX: block_index
+
+# A1406PT
+# ?? ?? ?? ?? ?? FF ?? 33 ?? ?? ?? ?? ?? ?? ?? ??
+
+# Fugue NOR
+# 5A 5A 5A
+
+# Qualcomm AMSS
+# ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA
+# ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA
+# (ASCII)
+
+# Microsoft FFS2
+# 27 57
+# https://github.com/openipcam/openipcam-n745-2.4/blob/ffe07aaf9c7fe05f1dd5baedde856149f49a0987/BSP/ucLinux24BSP/uClinux-dist/user/fs/ffs2/ffs2_fs.h#L4
 
 #################################
 ##            FTL              ##
@@ -48,15 +91,17 @@
 >0x9    string   !\x65                 {invalid}
 >0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
 
-0       string   \x13\x03CIS           Fujitsu SoFFS,
+1       string   \x03CIS               Fujitsu SoFFS,
 >2      string   x                     (%s)
 >8      string   !FTL100               {invalid}
 
-8       string   \xF0\xFF              00F0F0 Structure
+
+0x9     string   \xFF                  00F0F0 Footer
 >0xD    string   !\x00\xF0\xF0         {invalid}
+>-0x10  string   !\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF {invalid}
 
 
-0       string   \xB4\xB4              B4B4 FTL Data Metablock,
+0       string   \xB4\xB4              B4B4 FTL # Intel MMM / Sand Creek 
 >0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
 >0x10   string   !\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF {invalid}
 >0x2    uleshort x                     Value1: %d
@@ -65,18 +110,18 @@
 
 0       string   \x91\x5A\x49\x2C      Samsung Early XSR FTL
 
+0       string   XSR1d                 Samsung Early XSR1 FTL
+
 0       string   \x64                  Samsung XSR1 FTL
 >12     string   !XSR1                 {invalid}
 
-0       string   \x64                  Samsung XSR2 FTL
+0       string   \x64                  Samsung XSR2 FTL (1.5.2p4_b122)
 >12     string   !XSR2                 {invalid}
 
-0       string   \x64                  Samsung XSR3 FTL
+0       string   \x64                  Samsung XSR3 FTL (1.6.1p2_b098)
 >16     string   !XSR3                 {invalid}
 
-0       string   XSR1d                 Samsung XSR1d FTL
-
-0       string   XSRPART               Samsung XSR FTL Partition
+0       string   XSRPART               Samsung XSR FTL Partition Information
 >0      string   x                     (%s)
 
 0       string   FSR_STL               Samsung FSR FTL STL,
@@ -99,6 +144,14 @@
 >8      ubeshort x                     block index %s
 >10     string   !\x55\xAA             {invalid}
 
+# https://linux-mtd.infradead.narkive.com/wY9NeW54/identifying-a-flash-file-system
+0       string   ANAND                 M-Systems TrueFFS INFTL (ANAND)
+0       string   BNAND                 M-Systems TrueFFS INFTL (BNAND)
+0       string   CNAND                 M-Systems TrueFFS SAFTL (CNAND)
+
+
+
+
 
 #################################
 ##        File System          ##
@@ -113,7 +166,11 @@
 0       string   ROFS3             ROFS filesystem
 0       string   ROFS4             ROFS filesystem
 
-0       string   \xAA\x73\xEE\x55\xDB\xBD\x5E\xE3       Qualcomm EFS2 filesystem
+
+0       string   \xAA\x73\xEE\x55\xDB\xBD\x5E\xE3       Qualcomm Partition,
+>8      ulelong  x                                      Version %d,
+>0xC    ulelong  x                                      Num of partitions %d
+
 0       string   \x87\x67\x85\x34\x59\x77\x34\x92       Qualcomm Factory Image FS filesystem (CEFS)
 0       string   \x01\x00\x00\x00\x65\x01\x00\x00FS     FactorFs.bin (SGX_eng.exe)
 0       string   \x01\x00\x00\x00\x01\x00\x00\x00System Rsrc.cnt (SGX_eng.exe)
@@ -199,11 +256,18 @@
 >>>0x59          string   x                 {string}"%s"
 
 
+0x1FE            string   \x55\xAA          exFAT filesystem BPB
+>3               string   !EXFAT            {invalid}
+
+0x1FE            string   \x55\xAA          NTFS filesystem BPB
+>3               string   !NTFS             {invalid}
+
+0x40             string   _BHRfS_M          Btrfs filesystem superblock
+
 3       string   \x03\x00\x05\x00\x05\xD2\xFF\xFF\x00  CG2 Flex
-0       string   \xEb\x52\x90NTFS\x20\x20\x20\x20      NTFS filesystem
 0       string   NXSB                                  APFS filesystem
 
-0       string   P\x00F\x00S\x00F\x00F\x00S\x00           Old ffs filesystem
+0       string   P\x00F\x00S\x00F\x00F\x00S\x00        Old ffs filesystem
 
 
 #################################
