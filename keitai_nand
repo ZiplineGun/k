@@ -1,53 +1,77 @@
-# FTL note that cannot be recorded as magic
+# Notes that cannot be recorded as magic
 
-# V601SH SuperAND
-# [?? ?? ?? ??] FF FF FF FF [?? ??] [?? ??] [?? ??] FF FF
-# little
+#################################
+##       Big Endian OOB        ##
+#################################
+
+# Old Fugue
+# ?? ?? ?? [?? ??] FF FE FF [XX XX XX XX] FF FF [?? ??]
+# LSN: XX
+
+# New Toshiba
+# ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? [XX XX XX XX] 00 00
+# XX: LBN, It's repeated twice every 0x10 in the header and footer of each block (0x200).
+# OEMName: GR-FILE
+
+# Toshiba
+# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? [XX XX] ??
+# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? FF  FF  FF
+# LBN: XX, Only in the header and footer of one block (0x200).
+# if w54t: (index & 0x7FFF) >> 1
+# OEMName: GR-FILE
+
+# SO505i (Old Toshiba)
+# ?? ?? ?? ?? FF FF [XX XX] ?? ?? ?? [YY YY] ?? ?? ??
+# LBN: (XX & 0x0FFF) >> 1) (=YY)
+# Within one block, the same block_index repeats every 0x10.
+
+# CDM-9950 
+# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? XX XX XX
+# LBN: ((XX & 0xfff) >> 1), 0x200
+# Within one block, the same block_index repeats every 0x10.
+
+# F900i (maybe M-Systems TrueFFS INFTL)
+# ?? ?? ?? FF FF FF 55 55 [XX XX] [YY YY] FF FF FF FF
+# ?? ?? ?? FF FF FF 55 55 [ZZ ZZ   ZZ ZZ] ?? ?? ?? ??
+# ?? ?? ?? FF FF FF 55 55  FF FF   FF FF  FF FF FF FF
+# LBN: XX (=YY)
+# one block: 0x200
+
+# F505i
+# [?? ?? ??] [??] FE FF [XX XX XX XX] FF FF FF FF [?? ??]
+# LSN: XX
+
+
+#################################
+##     Little Endian OOB       ##
+#################################
+
+# SSR200
+# [XX XX XX XX] [YY YY YY YY] FF FF FF FF FF ?? ?? ??
+# LSN: XX (= YY)
+
+# OLD SSR200
+# [XX XX XX XX] FF FF FF FF FF FF FF FF FF ?? ?? ??
+# LSN: XX, little
+
+# mova SSR200
+# [XX XX XX XX] [YY YY YY YY] 00 [ZZ ZZ ZZ] ?? ?? ?? 00
+# LSN: XX (= YY)
+# ???: ZZ (00 FF FF or FF FF FF)
 
 # SH/D904i OOB
-# YY B8 XX XX FF FF ?Z ?? ?? ?? ?? ?? ?? ?? FF FF
-# YY B8 ?? C4 FF FF FF ?? ?? ?? ?? ?? ?? ?? FF FF
+# [YY] B8 [XX XX] FF FF ?Z ?? ?? ?? ?? ?? ?? ?? FF FF
+# [YY] B8 [YY]C0  FF FF FF ?? ?? ?? ?? ?? ?? ?? FF FF
 # block size: 0x1000, little
 # LSN: (XX XX) << 8 | YY, every 0x10 in the block
 
-# SO505i (Old Toshiba) OOB
-# FF FF FF FF FF FF XX XX FF FF FF YY YY FF FF FF 
-# LBN: XX, big, Within one block, the same block_index repeats every 0x10.
-# XX = YY
-
-# Toshiba OOB
-# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? XX XX ??
-# LBN: XX, big, At the head and tail every 0x200.
-# g_w54tMode: (index & 0x7FFF) >> 1
-# GR-FILE
-
-# New Toshiba OOB
-# ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? XX XX XX XX ?? ??
-# XX: LBN (big), At the head and tail every 0x200.
-# GR-FILE
-
-# F900i OOB (maybe M-Systems TrueFFS INFTL)
-# XX XX XX FF FF FF 55 55 XX XX YY YY FF FF FF FF 
-# 0x200
-
-# F505i OOB
-# [?? ?? ??] [??] FE FF XX XX XX XX FF FF FF FF [?? ??]
-# LSN: XX, big
-
-# SSR200
-# XX XX XX 00 YY YY YY 00 FF FF FF FF FF ?? ?? ??
-# LSN: XX (XX == YY), little
-
-# OLD SSR200
-# XX XX XX 00 FF FF FF FF FF FF FF FF FF ?? ?? ??
-# LSN: XX, little
-
-# CDM-9950 OOB 
-# ?? ?? ?? ?? ?? FF ?? ?? ?? ?? ?? ?? ?? XX XX XX
-# LBN: XX
-
 # A1406PT
-# ?? ?? ?? ?? ?? FF ?? 33 ?? ?? ?? ?? ?? ?? ?? ??
+# [?? ??] [?? ??] XX FF ?? 33 ?? ?? ?? ?? ?? ?? ?? ??
+# XX = 00 or FF
+
+# V601SH SuperAND
+# [?? ?? ?? ??] FF FF FF FF [?? ??] [?? ??] [?? ??] FF FF
+
 
 # Fugue NOR
 # 5A 5A 5A
@@ -55,35 +79,25 @@
 # Qualcomm AMSS
 # ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA
 # ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA
-# (ASCII string)
+# XX XX ...
+# string: XX
+
+
+# YAFFS2
+# XX XX XX XX YY YY YY YY FF FF ZZ ZZ ZZ ZZ ZZ ZZ
+# type: XX, big
+# parent: YY
+# filename: ZZ
 
 # Microsoft FFS2
 # 27 57
 # https://github.com/openipcam/openipcam-n745-2.4/blob/ffe07aaf9c7fe05f1dd5baedde856149f49a0987/BSP/ucLinux24BSP/uClinux-dist/user/fs/ffs2/ffs2_fs.h#L26
 
+
+# ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??
 #################################
 ##            FTL              ##
 #################################
-
-0x0     string   \xFF\xFF\xFF\xFF\xF2  D505i/D505iS Structure
->6      string   !\xFF\xFF\xF2         {invalid}
->0xA    string   !\xFF\xFF\xF2         {invalid}
->0xE    string   !\xFF\xFF             {invalid}
-
-0x10    string   \x00\xFF\xFF\xFF\xFF\xFF  M4 Structure{strlen:2}
->0x19   string   !\x55\x55\x55\xFF\xFF     {invalid}
->0xA    string   x                         {string}(%s)
-
-0       string   \x44\x41\x54\x41\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 D900i Structure
-
-0       string   \x0F\xF0\xFF\xFF\x33\xCC\xFF\xFF\xFF V501T FTL
-
-0xC     string   \xF0\xF0\x00\xFF      SH900i FTL Footer
->1      string   !\x00\x00             {invalid}
->5      string   !\x00\x00             {invalid}
-
-2       string   ny\x20Format          Sony Ericsson Custom FS
-
 4       string   \xA3\xC5              Softbank C5A3 FS
 >0x9    string   !\x65                 {invalid}
 >0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
@@ -91,12 +105,6 @@
 1       string   \x03CIS               Fujitsu SoFFS,
 >2      string   x                     (%s)
 >8      string   !FTL100               {invalid}
-
-
-0x9     string   \xFF                  00F0F0 Footer
->0xD    string   !\x00\xF0\xF0         {invalid}
->-0x10  string   !\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF {invalid}
-
 
 0       string   \xB4\xB4              B4B4 FTL # Intel MMM / Sand Creek 
 >0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
@@ -148,11 +156,36 @@
 
 
 
+#################################
+##        NOR only FTL         ##
+#################################
+0x0     string   \xFF\xFF\xFF\xFF\xF2      FF FF FF FF F2 Structure
+>6      string   !\xFF\xFF\xF2             {invalid}
+>0xA    string   !\xFF\xFF\xF2             {invalid}
+>0xE    string   !\xFF\xFF                 {invalid}
+
+0x10    string   \x00\xFF\xFF\xFF\xFF\xFF  M4 Structure Footer{strlen:2}
+>0x19   string   !\x55\x55\x55\xFF\xFF     {invalid}
+>0xA    string   x                         {string}(%s)
+
+0x9     string   \xFF                      00F0F0 Structure Footer
+>0xD    string   !\x00\xF0\xF0             {invalid}
+>-0x10  string   !\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF {invalid}
+
+0       string   DATA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 D900i Structure
+
+0       string   \x0F\xF0\xFF\xFF\x33\xCC\xFF\xFF\xFF V501T FTL
+
+0xC     string   \xF0\xF0\x00\xFF      SH900i FTL Footer
+>1      string   !\x00\x00             {invalid}
+>5      string   !\x00\x00             {invalid}
+
 
 
 #################################
 ##        File System          ##
 #################################
+2       string   ny\x20Format      Sony Ericsson Custom FS
 
 0       string   \x7E\x00\x00\xEA  EPOC32 ROM
 >6      string   !\x00\xEB         {invalid}
@@ -162,7 +195,6 @@
 0       string   ROFS2             ROFS filesystem
 0       string   ROFS3             ROFS filesystem
 0       string   ROFS4             ROFS filesystem
-
 
 0       string   \xAA\x73\xEE\x55\xDB\xBD\x5E\xE3       Qualcomm Partition,
 >8      ulelong  x                                      Version %d,
@@ -291,6 +323,8 @@
 0       string   NO\x20NAME        FAT String (NO NAME)
 0       string   $RFS_LOGLO$       Samsung RFS Root File String ($RFS_LOGLO$)
 
+0       string   Fugue\x20FAT\x20File\x20System   Fugue FAT String
+>0      string   x                                (%s)
 
 #0       string   FSR_STL           FSR_STL String
 #>0      string   x                 (%s)
