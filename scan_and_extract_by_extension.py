@@ -160,9 +160,7 @@ SOFTBANK_FILE_TYPES: List[Dict[str, Any]] = [
     },
     {
         "extension": [".xcsf"], # kisekae
-        "magic": [
-            None,
-        ],
+        "magic": None,
     },
 ]
 
