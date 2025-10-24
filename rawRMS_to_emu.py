@@ -5,7 +5,10 @@ import struct
 parser = argparse.ArgumentParser(description="Raw RMS converter")
 parser.add_argument("input")
 parser.add_argument("out_dir")
-parser.add_argument("-of", "--offset", default=None, help="If not specified, auto-detect.")
+parser.add_argument("-of", "--offset", default=None,
+                    help="Hex notation (0x***) can be used. If not specified, auto-detect.",
+                    type=lambda x: int(x, 0)
+)
 args = parser.parse_args()
 
 with open(args.input, "rb") as inf:
@@ -14,7 +17,9 @@ with open(args.input, "rb") as inf:
 os.makedirs(args.out_dir, exist_ok=True)
 
 def get_rms_partitions(rms_data):
-    off = args.offset or 0 # Skip offset 0
+    print(args.offset)
+    off = args.offset or 1 # Skip offset 0
+    off -= 1
     while (off := rms_data.find(b"\x00\x00\x00\x01", off+1)) != -1:
         print("Trying", hex(off))
         rms_partitions = []
