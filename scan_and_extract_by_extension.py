@@ -35,12 +35,12 @@ DOCOMO_FILE_TYPES: List[Dict[str, Any]] = [
             {"magic": b"CWS", "start": 0},
         ],
     },
-    {
-        "extension": [".3gp", ".mp4", ".m4a"],
-        "magic": [
-            {"magic": b"ftyp", "start": 4},
-        ],
-    },
+    # {
+    #     "extension": [".3gp", ".mp4", ".m4a"],
+    #     "magic": [
+    #         {"magic": b"ftyp", "start": 4},
+    #     ],
+    # },
     {
         "extension": [".zbf"],
         "magic": [
@@ -122,12 +122,12 @@ SOFTBANK_FILE_TYPES: List[Dict[str, Any]] = [
             {"magic": b"CWS", "start": 0},
         ],
     },
-    {
-        "extension": [".3gp", ".mp4", ".m4a"],
-        "magic": [
-            {"magic": b"ftyp", "start": 4},
-        ],
-    },
+    # {
+    #     "extension": [".3gp", ".mp4", ".m4a"],
+    #     "magic": [
+    #         {"magic": b"ftyp", "start": 4},
+    #     ],
+    # },
     {
         "extension": [".zbf"],
         "magic": [
@@ -171,12 +171,12 @@ KDDI_FILE_TYPES: List[Dict[str, Any]] = [
             {"magic": b"MThd", "start": 0},
         ],
     },
-    {
-        "extension": [".3gp", ".mp4", ".m4a", ".3g2"],
-        "magic": [
-            {"magic": b"ftyp", "start": 4},
-        ],
-    },
+    # {
+    #     "extension": [".3gp", ".mp4", ".m4a", ".3g2"],
+    #     "magic": [
+    #         {"magic": b"ftyp", "start": 4},
+    #     ],
+    # },
     {
         "extension": [".zbf"],
         "magic": [
@@ -234,12 +234,12 @@ WILLCOM_FILE_TYPES: List[Dict[str, Any]] = [
             {"magic": b"MThd", "start": 0},
         ],
     },
-    {
-        "extension": [".3gp", ".mp4", ".m4a"],
-        "magic": [
-            {"magic": b"ftyp", "start": 4},
-        ],
-    },
+    # {
+    #     "extension": [".3gp", ".mp4", ".m4a"],
+    #     "magic": [
+    #         {"magic": b"ftyp", "start": 4},
+    #     ],
+    # },
     {
         "extension": [".zbf"],
         "magic": [
