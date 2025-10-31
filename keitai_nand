@@ -1,4 +1,4 @@
-# Notes that cannot be recorded as magic
+# Notes
 
 #################################
 ##       Big Endian OOB        ##
@@ -47,14 +47,14 @@
 #################################
 
 # SSR200
-# [XX XX XX XX] [YY YY YY YY] FF FF FF FF FF ?? ?? ??
+# ?? [XX XX XX] ?? [YY YY YY] FF FF FF FF FF ?? ?? ??
 # LSN: XX (= YY)
 
-# OLD SSR200
-# [XX XX XX XX] FF FF FF FF FF FF FF FF FF ?? ?? ??
+# SSR200 (old flavor)
+# ?? [XX XX XX] FF FF FF FF FF FF FF FF FF ?? ?? ??
 # LSN: XX, little
 
-# mova SSR200
+# SSR200 (mova flavor)
 # [XX XX XX XX] [YY YY YY YY] 00 [ZZ ZZ ZZ] ?? ?? ?? 00
 # LSN: XX (= YY)
 # ???: ZZ (00 FF FF or FF FF FF)
@@ -92,20 +92,11 @@
 # 27 57
 # https://github.com/openipcam/openipcam-n745-2.4/blob/ffe07aaf9c7fe05f1dd5baedde856149f49a0987/BSP/ucLinux24BSP/uClinux-dist/user/fs/ffs2/ffs2_fs.h#L26
 
-# Qualcomm AMSS
-# ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA
-# ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA ?? ?? ?? EA
-# XX XX ...
-# string: XX
 
 # ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??
 #################################
 ##            FTL              ##
 #################################
-4       string   \xA3\xC5              Softbank C5A3 FS
->0x9    string   !\x65                 {invalid}
->0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
-
 1       string   \x03CIS               Fujitsu SoFFS,
 >2      string   x                     (%s)
 >8      string   !FTL100               {invalid}
@@ -115,25 +106,30 @@
 >0x10   string   !\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF {invalid}
 >0x2    uleshort x                     Value1: %d
 
-0       string   SSR200                Samsung SSR200 FTL
+# SSR (Simple Sector Remapper)
+0       string   SSR200                Samsung SSR Erase Unit Header
 
-0       string   \x91\x5A\x49\x2C      Samsung Early XSR FTL
+# XSR (eXtended Sector Remapper)
+0       string   \x91\x5A\x49\x2C      Samsung Early XSR Erase Unit Header
+ 
+0       string   XSR1d                 Samsung Early XSR1 Erase Unit Header
 
-0       string   XSR1d                 Samsung Early XSR1 FTL
+0x0C    string   XSR1                  Samsung XSR1 Erase Unit Header
+>0x30   string   !\xA7\xAC\xAD\xCE     {invalid}
 
-0       string   \x64                  Samsung XSR1 FTL
->12     string   !XSR1                 {invalid}
+0x0C    string   XSR2                  Samsung XSR2 Erase Unit Header, #ver 1.5.2p4_b122
+>0x30   string   !\xA7\xAC\xAD\xCD     {invalid}
+>0x40   ubyte    x                     Partition: %d
 
-0       string   \x64                  Samsung XSR2 FTL (1.5.2p4_b122)
->12     string   !XSR2                 {invalid}
+0x10    string   XSR3\xA7\xAC\xAD\xCC  Samsung XSR3 Erase Unit Header, #ver 1.6.1p2_b098
+>0x28   string   !\xA5\xA5\xA5\xA5     {invalid}
+>0x40   ubyte    x                     Partition: %d
 
-0       string   \x64                  Samsung XSR3 FTL (1.6.1p2_b098)
->16     string   !XSR3                 {invalid}
+0       string   XSRPART               Samsung XSR Partition Information Area,
+>0xC    ulelong  x                     nNumOfPartEntry: %d
 
-0       string   XSRPART               Samsung XSR FTL Partition Information
->0      string   x                     (%s)
-
-0       string   FSR_STL               Samsung FSR FTL STL,
+#  FSR (Flex Sector Remapper)
+0       string   FSR_STL               Samsung FSR Sector Translation Layer Header (,
 >9      ubyte    x                     version %d.
 >0xA    ubyte    x                     %d.
 >0xB    ubyte    x                     %d
@@ -141,7 +137,7 @@
 >9      string   \x01\x02\x01          (FSR_ll)
 >0xC    string   !\xFF\xFF\xFF\xFF     {invalid}
 
-0       string   FSRPART               Samsung FSR FTL Partition
+0       string   FSRPART               Samsung FSR Partition Information Area
 >0      string   x                     (%s)
 
 0       string   \xCC\xDDDL_FS         Datalight FlashFX FTL{strlen:4},
@@ -163,24 +159,30 @@
 #################################
 ##        NOR only FTL         ##
 #################################
-0x0     string   \xFF\xFF\xFF\xFF\xF2      FF FF FF FF F2 Structure
+4       string   \xA3\xC5                  C5A3 FS Block Header
+>0x9    string   !\x65                     {invalid}
+>0xC    string   !\xFF\xFF\xFF\xFF         {invalid}
+
+0x10    string   \x00\x00\x08\x00\x7C\x00\x00\x00\x10\x00\x1C\x00\x40\x00\x05\x39   SH902i FS Block Header
+
+0x0     string   \xFF\xFF\xFF\xFF\xF2      FF FF FF FF F2 FTL Block Header
 >6      string   !\xFF\xFF\xF2             {invalid}
 >0xA    string   !\xFF\xFF\xF2             {invalid}
 >0xE    string   !\xFF\xFF                 {invalid}
 
-0x10    string   \x00\xFF\xFF\xFF\xFF\xFF  M4 Structure Footer{strlen:2}
+0x10    string   \x00\xFF\xFF\xFF\xFF\xFF  M4 FTL Block Footer{strlen:2}
 >0x19   string   !\x55\x55\x55\xFF\xFF     {invalid}
 >0xA    string   x                         {string}(%s)
 
-0x9     string   \xFF                      00F0F0 Structure Footer
->0xD    string   !\x00\xF0\xF0             {invalid}
->-0x10  string   !\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF {invalid}
+0x1D    string   \x00\xF0\xF0              00F0F0 FTL Block Footer
+>0x19   string   !\xFF                     {invalid}
+>0x0    string   !\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF {invalid}
 
-0       string   DATA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 D900i Structure
+0       string   DATA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 D900i Structure Block Header
 
-0       string   \x0F\xF0\xFF\xFF\x33\xCC\xFF\xFF\xFF V501T FTL
+0       string   \x0F\xF0\xFF\xFF\x33\xCC\xFF\xFF\xFF V501T FTL Block Header
 
-0xC     string   \xF0\xF0\x00\xFF      SH900i FTL Footer
+0xC     string   \xF0\xF0\x00\xFF      SH900i FTL Block Footer
 >1      string   !\x00\x00             {invalid}
 >5      string   !\x00\x00             {invalid}
 
