@@ -12,7 +12,7 @@ import traceback
 def main():
     java_directory = sys.argv[1]
 
-    output_folder = os.path.dirname(java_directory) + "\\output\\"
+    output_folder = os.path.dirname(os.path.abspath(java_directory)) + "\\output\\"
     os.makedirs(output_folder, exist_ok=True)
     
     adf_dir = os.path.join(java_directory, "JAM")
@@ -270,3 +270,4 @@ if __name__ == "__main__":
         print(f"Usage: python {sys.argv[0]} java_directory")
     else:
         main()
+
