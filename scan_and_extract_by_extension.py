@@ -80,7 +80,7 @@ DOCOMO_FILE_TYPES: List[Dict[str, Any]] = [
     {
         "extension": [".afd"],
         "magic": [
-            {"magic": b"CFD", "start": 0},
+            {"magic": b"AFD", "start": 0},
         ],
     },
     {
