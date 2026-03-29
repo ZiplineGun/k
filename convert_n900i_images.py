@@ -2,13 +2,12 @@ import os
 import struct
 from PIL import Image
 import argparse
-from typing import Union
 
-DO_CONVERT = True
 ALPHA_COLOR = (0, 36, 0)
 
 perser = argparse.ArgumentParser("N900i image converter")
 perser.add_argument("input", help="N900i NOR file")
+perser.add_argument("-c", "--convert", action="store_true", help="Whether to convert the raw image to PNG.")
 perser.add_argument("output_dir")
 args = perser.parse_args()
 
@@ -51,7 +50,7 @@ for start, end in table_offs:
         out_data = nor_data[off : off + size]
         out_basename = f"type{type}_{width}x{height}_{hex(off)}"
         
-        if DO_CONVERT and ext == "bin":
+        if args.convert and ext == "bin":
             try:
                 if type == 5:
                     img = Image.frombytes("RGB", (width, height), out_data, "raw","BGR;16")
