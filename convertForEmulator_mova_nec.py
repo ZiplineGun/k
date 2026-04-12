@@ -13,6 +13,8 @@ class SpType(Enum):
     SINGLE = auto()
     MULTI = auto()
 
+DEBUG = False
+
 CONFIGS = {
     "N504iS": {
         "device_name": "N504iS",
@@ -213,7 +215,8 @@ def convert(adf_data, sp_data, jar_size, model_config):
 
     (adf_dict, jam_download_url, other_items) = perse_adf(adf_data, start_adf)
     print(f"ADF Values: {adf_dict}")
-    print(f"JAM unused values: {other_items}")
+    if other_items:
+        print(f"❗ JAM unused values: {other_items} ❗")
     print(f"JAM Download URL: {jam_download_url}")
 
     if len(sp_sizes) != 0 and sum(sp_sizes) != len(sp_data):
@@ -273,49 +276,96 @@ def read_spsizes_from_adf(adf_data, start_offset):
 def perse_adf(adf_data, start_adf):
     adf_dict = {}
 
-    # Parse adf. order: AppName [AppVer] PackageURL [ConfigurationVer] AppClass [AppParam] LastModified [TargetDevice] [ProfileVer] jar_download_url
-    adf_items = filter(None, adf_data[start_adf:].split(b"\00"))
-    adf_items = list(map(lambda b: b.decode("cp932", errors="replace"), adf_items))
-
-    adf_dict["AppName"] = adf_items[0]
-
-    if not adf_items[1].startswith("http"):
-        adf_dict["AppVer"] = adf_items[1]
-    else:
-        adf_items.insert(1, None)
-
-    adf_dict["PackageURL"] = adf_items[2]
+    # Unknown:
+    # UseNetwork http
+    # UseTelephone call
+    # UseBrowser launch
+    # UseDTV launch
+    # AppTrace "on"
+    # DrawArea
+    # MyConcierge yes
+    # GetSysInfo yes
+    # LaunchApp yes
+    # RemoteControl yes
+    # AccessUserInfo yes
+    # GetUtn terminalid or userid
+    # LaunchByApp deny
+    # IletPreserve deny
+    # LaunchByBML 0-11
+    # MessageCode 10digits ascii
+    # UseStorage ext
     
-    if adf_items[3] in ["CLDC-1.1", "CLDC-1.0"]:
-        adf_dict["ConfigurationVer"] = adf_items[3]
-    else:
-        adf_items.insert(3, None)
+    key_map_sys = {
+        0x00: "jarsize_to_adf_area_size", # 0x60
+        0x3A: "padding_size", # 0x20
+        0x4F: "sp_area_size", # 0x40
+        
+    }
+    
+    key_map_first = {
+        0x04: "AppName",
+        0x05: "AppVer",
+        0x10: "LaunchAt",
+        0x06: "PackageURL",
+        # ? : "ConfigurationVer",
+        0x0A: "AppClass",
+        0x0C: "AppParam",
+        0x0E: "LastModified",
+        # The order might be wrong.
+        0x0F: "TargetDevice",
+        0x16: "AllowPushBy",
+        0x12: "LaunchByMail",
+        0x14: "LaunchByBrowser",
+        0x08: "ProfileVer",
+        0x02: "jam_download_url",
+    }
+    
+    key_map_second = {
+        0x3B: "TrustedAPID",
+        0x40: "unknownjarurl",
+        0x43: "TrustedLmd",
+        #0x38: "unknown",
+        0x50: "LaunchByMail",
+    }
+    
+    len_dict_sys = {}
+    for off, key in key_map_sys.items():
+        len_dict_sys[key] = adf_data[off]
 
-    adf_dict["AppClass"] = adf_items[4]
-
-    if not adf_items[5].startswith(("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")):
-        adf_dict["AppParam"] = adf_items[5]
-    else:
-        adf_items.insert(5, None)
-
-    adf_dict["LastModified"] = adf_items[6]
-
-    other_items = []
-    jam_download_url = None
-    if len(adf_items) > 6:
-        for adf_item in adf_items[7:]:
-            if re.search(r"(SH|SO|F|D|N|P)\d{3}", adf_item):
-                adf_dict["TargetDevice"] = adf_item
-            elif adf_item.startswith(("DoJa-1.0", "DoJa-2.0", "DoJa-2.1", "DoJa-2.2", "DoJa-3.0", "DoJa-3.5", "DoJa-4.0", "DoJa-4.1", "DoJa-5.0", "DoJa-5.1")):
-                adf_dict["ProfileVer"] = adf_item
-            elif adf_item.startswith("http"):
-                jam_download_url = adf_item
-            elif adf_item.endswith(".gif"):
-                adf_dict["AppIcon"] = adf_item
-            elif m := re.search(r"\d{3}x\d{3}", adf_item):
-                adf_dict["DrawArea"] = m.group(0)
-            else:
-                other_items.append(adf_item)
+    len_dict_first = {}
+    for off, key in key_map_first.items():
+        len_dict_first[key] = adf_data[off]
+        
+    len_dict_second = {}
+    for off, key in key_map_second.items():
+        len_dict_second[key] = adf_data[off]
+        
+    if DEBUG:
+        offs = list(key_map_sys.keys()) + list(key_map_first.keys()) + list(key_map_second.keys())
+        for i in range(0, 0x74):
+            if i not in offs and adf_data[i] != 0:
+                print(f"!!! unknown length offset {hex(i)}, value {hex(adf_data[i])}!!!")
+    
+    off = start_adf
+    if DEBUG:
+        print("len_dict_first:", len_dict_first)
+    for key, len in len_dict_first.items():
+        if len > 1:
+            item_data = adf_data[off : off + len]
+            if DEBUG:
+                print(f"[{key}] start: {hex(off)}, size: {hex(len)}. {adf_data[off : off + len]}")
+                if item_data[-1] != 0:
+                    print("The last element is not 0:", hex(off))
+            adf_dict[key] = item_data[:-1].decode("cp932")
+            off += len
+    
+    other_items = [b.decode("cp932") for b in adf_data[off : ].split(b"\x00") if any(b)]
+    
+    # Padding
+    off += 0x20
+    
+    jam_download_url = adf_dict["jam_download_url"]
+    del adf_dict["jam_download_url"]
 
     return (adf_dict, jam_download_url, other_items)
 
