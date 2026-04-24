@@ -8,6 +8,7 @@ import fnmatch
 import email.utils
 import traceback
 
+DEBUG = False
 
 def main():
     java_directory = sys.argv[1]
@@ -114,8 +115,8 @@ def convert(adf_content, jar_content, sp_content):
         sp_sizes = [int.from_bytes(adf_content[0x20:0x24], "little")]
         adf_dict["AppClass"] = carve_value(adf_content, 0x24).decode("cp932")
         
-        #if v := carve_value(adf_content, 0x???):
-        #    adf_dict["AppParam"] = v.decode("cp932")
+        if v := carve_value(adf_content, 0x124):
+            adf_dict["AppParam"] = v.decode("cp932")
         
         adf_dict["PackageURL"] = carve_value(adf_content, 0x3A5).decode("cp932")
         
@@ -197,8 +198,27 @@ def convert(adf_content, jar_content, sp_content):
     
     if not all([adf_dict["AppName"], adf_dict["AppClass"], adf_dict["LastModified"]]):
         raise ValueError("AppName or AppClass or LastModified is missing")
-        
+    
     print(adf_dict)
+    
+    # Extract the unparsed portions.
+    rest = []
+    for raw in adf_content.split(b"\00"):
+        if raw == b"":
+            continue
+        
+        try:
+            value = raw.decode("ascii")
+        except:
+            continue
+        
+        if value in adf_dict.values():
+            continue
+        
+        rest.append(value)
+    
+    if DEBUG:
+        print("rest:", rest)
     
     # create a jam
     jam_str = ""
