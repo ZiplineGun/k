@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+from concurrent.futures import ThreadPoolExecutor
 
 def detect_extension(data):
     if data[:4] == b"\x50\x4B\x03\x04":
@@ -34,14 +35,18 @@ def detect_extension(data):
     #     pass
 
     return None
+    
+
+def process(file):
+    with open(file, "rb") as f:
+        data = f.read(0x30)
+    ext = detect_extension(data)
+    if ext:
+        os.rename(file, os.path.splitext(file)[0] + "." + ext)
+        print(f"{os.path.basename(file)} => {ext}")
+
 
 if __name__ == "__main__":
     dirpath = sys.argv[1]
-    if os.path.isdir(dirpath):
-        for file in glob.glob(os.path.join(dirpath, "*")):
-            if os.path.isdir(file): continue
-            with open(file, "rb") as inf:
-                extention = detect_extension(inf.read(0x30))
-            if extention is not None:
-                os.rename(file, os.path.splitext(file)[0] + "." + extention)
-                print(f"{os.path.basename(file)} => {extention}")
+    with ThreadPoolExecutor() as ex:
+        ex.map(process, [e.path for e in os.scandir(dirpath) if e.is_file()])
