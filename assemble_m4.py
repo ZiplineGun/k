@@ -34,16 +34,23 @@ def detect_extension(data):
         or data[:4] == b"\xFF\xD8\xFF\xEE"
        ):
         return "jpg"
+    elif data[:4] == b"\x89PNG":
+        return "png"
     elif data[:4] == b"melo":
         return "mld"
     elif data.find(b".jam") != -1:
         return "adf"
     elif data[:4] == b"MMMD":
         return "mmf"
-    elif data.find(b"MIDlet-Name:") != -1:
-        return "jad"
-    else:
-        return "bin"
+    
+    if data.find(b"MIDlet-Name:") != -1:
+        try:
+             data.decode("UTF-8")
+             return "jad"
+        except:
+            pass
+        
+    return "bin"
     
 vspace = {}
 
@@ -74,9 +81,8 @@ with open(args.input, "rb") as inf:
                
                 if flag != 1:
                     vspace.setdefault(fs, {})
-
                     if chunk_id in vspace[fs]:
-                        if do_warning:
+                        if do_warning or fs == PRINT_FS:
                             print(f"WARN: chunk_id {chunk_id} of fs {fs} is duplicated. (metadata offset: {hex(block_number + off)})")
                     else:
                         vspace[fs][chunk_id] = chunk
@@ -89,7 +95,6 @@ for fs, fs_dict in vspace.items():
     file_data = bytearray()
     for chunk_id, chunk in sorted(fs_dict.items(), key=lambda x: int(x[0])):
         file_data += chunk
-        break
 
     if args.V601N_mode:
         file_data = file_data[4:]
