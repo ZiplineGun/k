@@ -12,8 +12,6 @@ parser.add_argument("-e","--detect-extension", action=argparse.BooleanOptionalAc
 parser.add_argument("-v","--V601N-mode", action=argparse.BooleanOptionalAction, help="Strip the 4-byte header at the start of the file.")
 parser.add_argument("-nw","--no-warning", action="store_true", help="No warning is displayed.")
 
-
-
 args = parser.parse_args()
 
 do_warning = not args.no_warning
@@ -24,6 +22,11 @@ out_dir = args.output or os.path.join(
 )
 os.makedirs(out_dir, exist_ok=True)
 
+TYPE_DEF = {
+    "jar": 512,
+    "rms": 1024,
+    "ico": 768,
+}
 
 TRANSLATION_TABLE = str.maketrans({
     "\\": "＼",
@@ -137,7 +140,7 @@ for fs, fs_dict in vspace.items():
     if args.V601N_mode:
         file_genre = int.from_bytes(file_data[:2], "little")
         file_id = int.from_bytes(file_data[2:4], "little")
-        if file_genre in [256, 512, 1024]:
+        if file_genre == 256 or file_genre in TYPE_DEF.values():
             file_data = file_data[4:]
         ext = detect_extension(file_data) if args.detect_extension else "bin"
         file_name = f"region_{file_genre:02d}_{file_id:02d}_{fs:05d}.{ext}"
@@ -203,32 +206,24 @@ if RENAME and args.V601N_mode:
     #with open(os.path.join(out_dir, file_infos[6150]["file_name"]), "rb") as inf:
     #    app_table = inf.read()
     
-    #
+
     for jad in sorted([f for f in os.listdir(out_dir) if os.path.isfile(os.path.join(out_dir, f)) and f.endswith(".jad")]):
         id = int(jad[2 : 8])
-        
-        jar_info = [
-            info
-            for info in file_infos.values()
-            if info["file_genre"] == 512 and info["file_id"] == id
-        ]
-        if len(jar_info) > 0:
-            src_path = os.path.join(out_dir, jar_info[0]["file_name"])
-            os.rename(
-                src_path,
-                os.path.join(out_dir, f"JA{id:06}.jar")
-            )
+
+        for ext, genre_id in TYPE_DEF.items():
+            info = [
+                info
+                for info in file_infos.values()
+                if info["file_genre"] == genre_id and info["file_id"] == id
+            ]
+            if len(info) > 0:
+                src_path = os.path.join(out_dir, info[0]["file_name"])
+                os.rename(
+                    src_path,
+                    os.path.join(out_dir, f"JA{id:06}.{ext}")
+                )
             
-        rms_info = [
-            info
-            for info in file_infos.values()
-            if info["file_genre"] == 1024 and info["file_id"] == id
-        ]
-        if len(rms_info) > 0:
-            src_path = os.path.join(out_dir, rms_info[0]["file_name"])
-            os.rename(
-                src_path,
-                os.path.join(out_dir, f"JA{id:06}.rms")
-            )
+
+
 
 print("End")
