@@ -78,7 +78,7 @@ def detect_extension(data):
         try:
              data.decode("UTF-8")
              return "jad"
-        except:
+        except UnicodeDecodeError:
             pass
         
     return "bin"
@@ -118,7 +118,7 @@ with open(args.input, "rb") as inf:
                     with open(os.path.join(dir, f"{fs}_{hex(block_number + off)}_{chunk_id}_{flag}.bin"), "wb") as outf:
                         outf.write(chunk)
                
-                if marker == 0xFC and flag != 1:
+                if marker == 0xFC and (flag & 0x0F) != 1:
                     vspace.setdefault(fs, {})
                     if chunk_id in vspace[fs]:
                         if do_warning:
@@ -165,6 +165,10 @@ if RENAME and args.V601N_mode:
         
     with open(os.path.join(out_dir, file_infos[262]["file_name"]), "rb") as inf:
         filetable += inf.read()
+        
+    with open(os.path.join(out_dir, file_infos[518]["file_name"]), "rb") as inf:
+        filetable += inf.read()
+    
 
     for i, off in enumerate(range(0, len(filetable), 0x5C)):
         tbl = filetable[off : off + 0x5C]
@@ -193,14 +197,15 @@ if RENAME and args.V601N_mode:
         if len(info) > 0:
             src_path = os.path.join(out_dir, info[0]["file_name"])
             
-            if os.path.getsize(src_path) != filesize:
-                print(f"WARN: different filesize:{filename}, id={i}, assumed={filesize}, actual={os.path.getsize(src_path)}")
+            if os.path.getsize(src_path) != filesize and do_warning:
+                print(f"WARN: different filesize:{filename}, file_id={i}, assumed={filesize}, actual={os.path.getsize(src_path)}")
             
             os.rename(
                 src_path,
                 dest_path,
             )
-            
+        elif do_warning:
+            print(f"WARN: skipped {filename}, file_id={i}")
         
             
     #with open(os.path.join(out_dir, file_infos[6150]["file_name"]), "rb") as inf:
@@ -208,7 +213,7 @@ if RENAME and args.V601N_mode:
     
 
     for jad in sorted([f for f in os.listdir(out_dir) if os.path.isfile(os.path.join(out_dir, f)) and f.endswith(".jad")]):
-        id = int(jad[2 : 8])
+        jad_id = int(jad[2 : 8])
 
         for ext, genre_id in TYPE_DEF.items():
             info = [
@@ -220,7 +225,7 @@ if RENAME and args.V601N_mode:
                 src_path = os.path.join(out_dir, info[0]["file_name"])
                 os.rename(
                     src_path,
-                    os.path.join(out_dir, f"JA{id:06}.{ext}")
+                    os.path.join(out_dir, f"JA{jad_id:06}.{ext}")
                 )
             
 
