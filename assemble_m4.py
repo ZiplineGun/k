@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description="Keitai M4 Assemble")
 parser.add_argument("input")
 parser.add_argument("-o", "--output", default=None)
 parser.add_argument("-e","--detect-extension", action=argparse.BooleanOptionalAction, help="Adds an extension by detecting the file type from its magic number. Misclassification is possible.")
-parser.add_argument("-v","--V601N-mode", action=argparse.BooleanOptionalAction, help="Strip the 4-byte header at the start of the file.")
+parser.add_argument("-v","--V601N-mode", action=argparse.BooleanOptionalAction, help="Strip the 4-byte header at the start of the file and rename base on matadata file.")
 parser.add_argument("-nw","--no-warning", action="store_true", help="No warning is displayed.")
 
 args = parser.parse_args()
@@ -130,6 +130,9 @@ with open(args.input, "rb") as inf:
         data = inf.read(0x20000)
         block_number += 0x20000
 
+if len(vspace) == 0:
+    raise ValueError("No valid M4 blocks were found.")
+
 file_infos = {}
 for fs, fs_dict in vspace.items():
     file_data = bytearray()
@@ -179,12 +182,11 @@ if RENAME and args.V601N_mode:
         filename = sanitize_filename(
             tbl[0x13 : tbl.find(b"\x00", 0x13)].decode("cp932")
         )
-        info = [
+        target_info = [
             info
             for info in file_infos.values()
             if info["file_genre"] == 256 and info["file_id"] == i
         ]
-        
         
         dest_path = os.path.join(out_dir, filename)
         if os.path.isfile(dest_path):
@@ -194,8 +196,8 @@ if RENAME and args.V601N_mode:
                 dest_path = os.path.join(out_dir, f"{name} ({count}){ext}")
                 count += 1
         
-        if len(info) > 0:
-            src_path = os.path.join(out_dir, info[0]["file_name"])
+        if len(target_info) > 0:
+            src_path = os.path.join(out_dir, target_info[0]["file_name"])
             
             if os.path.getsize(src_path) != filesize and do_warning:
                 print(f"WARN: different filesize:{filename}, file_id={i}, assumed={filesize}, actual={os.path.getsize(src_path)}")
@@ -216,19 +218,17 @@ if RENAME and args.V601N_mode:
         jad_id = int(jad[2 : 8])
 
         for ext, genre_id in TYPE_DEF.items():
-            info = [
+            target_info = [
                 info
                 for info in file_infos.values()
                 if info["file_genre"] == genre_id and info["file_id"] == id
             ]
-            if len(info) > 0:
-                src_path = os.path.join(out_dir, info[0]["file_name"])
+            
+            if len(target_info) > 0:
+                src_path = os.path.join(out_dir, target_info[0]["file_name"])
                 os.rename(
                     src_path,
                     os.path.join(out_dir, f"JA{jad_id:06}.{ext}")
                 )
-            
-
-
 
 print("End")
