@@ -121,7 +121,7 @@ for emoji_info in EMOJI_INFOS:
     frames = []
     off = emoji_info["table_start"]
     out_dir = os.path.join(args.out_dir, f"{emoji_info['width']}x{emoji_info['height']}")
-    os.makedirs(out_dir, exist_ok="True")
+    os.makedirs(out_dir, exist_ok=True)
     
     if emoji_info["is_short"]:
         entry_size = 4
@@ -141,13 +141,14 @@ for emoji_info in EMOJI_INFOS:
             off += entry_size
     
     code_points = emoji_info["code_points"].copy()
-    for i in range(len(frames)):
+    chara_num = len(frames)
+    for _ in range(chara_num):
         if len(code_points) > 0:
             code_point = code_points.pop(0)
         else:
             code_point = 0xFFFF
         
-        for j in range(frames.pop(0)):
+        for frame in range(frames.pop(0)):
             raw_image_size = emoji_info["width"] * emoji_info["height"]
             raw_image = nor_data[off : off + raw_image_size]
             
@@ -161,7 +162,7 @@ for emoji_info in EMOJI_INFOS:
                     if (r, g, b) == ALPHA_COLOR:
                         pixels[x, y] = (r, g, b, 0) 
             
-            out_path = os.path.join(out_dir, f"{code_point:04X}_{j:02}")
+            out_path = os.path.join(out_dir, f"{code_point:04X}_{frame:02}")
                 
             if args.raw_output:
                 out_path += ".bin"
