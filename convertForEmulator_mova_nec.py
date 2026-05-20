@@ -16,6 +16,13 @@ class SpType(Enum):
 DEBUG = False
 
 CONFIGS = {
+    "N504i": {
+        "device_name": "N504i",
+        "draw_area": "160x180",
+        "sp_type": SpType.SINGLE,
+        "start_spsize": 0x5C,
+        "start_adf": 0x6C,
+    },
     "N504iS": {
         "device_name": "N504iS",
         "draw_area": "160x180",
@@ -216,7 +223,7 @@ def convert(adf_data, sp_data, jar_size, model_config):
     (adf_dict, jam_download_url, other_items) = perse_adf(adf_data, start_adf)
     print(f"ADF Values: {adf_dict}")
     if other_items:
-        print(f"❗ JAM unused values: {other_items} ❗")
+        print(f"JAM unused values: {other_items}")
     print(f"JAM Download URL: {jam_download_url}")
 
     if len(sp_sizes) != 0 and sum(sp_sizes) != len(sp_data):
@@ -295,11 +302,12 @@ def perse_adf(adf_data, start_adf):
     # MessageCode 10digits ascii
     # UseStorage ext
     
+    # jarsize 0x58
+    
     key_map_sys = {
         0x00: "jarsize_to_adf_area_size", # 0x60
         0x3A: "padding_size", # 0x20
         0x4F: "sp_area_size", # 0x40
-        
     }
     
     key_map_first = {
@@ -359,7 +367,7 @@ def perse_adf(adf_data, start_adf):
             adf_dict[key] = item_data[:-1].decode("cp932")
             off += len
     
-    other_items = [b.decode("cp932") for b in adf_data[off : ].split(b"\x00") if any(b)]
+    other_items = [b.decode("cp932", errors="ignore") for b in adf_data[off : ].split(b"\x00") if any(b)]
     
     # Padding
     off += 0x20
