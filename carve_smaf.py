@@ -272,7 +272,8 @@ def extract_smaf(file_path, output_dir, use_numbering, add_offset, strict_mode):
         title, ext, smaf_data, pos = file_info
         
         numbering = f"{song_count:0{num_digits}d} " if use_numbering else ""
-        offset = f"0x{pos:07X}_" if add_offset else ""
+        hex_digit = len(hex(len(data))[2:])
+        offset = f"0x{pos:0{hex_digit}X}_" if add_offset else ""
         filename = f"{numbering}{offset}{title}"
 
         duplicate_counter = 2
