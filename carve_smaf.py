@@ -156,7 +156,7 @@ def parse_smaf(smaf_data):
                     raise ValueError(f"Chunk parsing failed, pos: {hex(pos)}")
 
                 opda_id = chunk_data[opda_pos : opda_pos + 3]
-                opda_code_type = chunk_data[opda_pos + 4]
+                opda_code_type = chunk_data[opda_pos + 3]
                 opda_size = int.from_bytes(chunk_data[opda_pos + 4 : opda_pos + 8], "big")
                 if opda_pos + 8 + opda_size > chunk_size:
                     raise ValueError(f"Chunk parsing failed, pos: {hex(pos + opda_pos)}")
@@ -196,6 +196,8 @@ def parse_smaf(smaf_data):
                         opda_id: dch_data,
                         "opda_code_type": opda_code_type,
                     })
+                if DEBUG:
+                    print(f"    opda_code_type: {opda_code_type}")
                 opda_pos += 8 + opda_size
 
             smaf_dict[chunk_id] = opda_dicts
