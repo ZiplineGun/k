@@ -61,7 +61,7 @@ def detect_dirtype(dir_path):
     if all(os.path.isdir(os.path.join(dir_path, n)) for n in ["ADF", "JAR", "SCP"]):
         return DirType.SSR200
     
-    if any(f.startswith("region_") for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))):
+    if any(f.endswith(".adf") for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))):
         return DirType.M4
     
     raise ValueError("unknown dir type")
@@ -76,46 +76,30 @@ def main(model_config, input_dir, output_dir):
     print("dir type:", dirtype)
 
     if dirtype == DirType.M4:
-        region_files = [file for file in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, file)) and file.startswith("region_")]
-        region_files.sort()
+        adf_files = [file for file in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, file)) and file.endswith(".adf")]
+        adf_files.sort()
 
-        app_path_conbo = {
-            "jar": None,
-            "sp": None,
-            "adf": None,
-        }
-        # order: JAR [SP] ADF
-        for region_file in region_files:
-            region_path = os.path.join(input_dir, region_file)
-            with open(region_path, "rb") as inf:
-                region_data = inf.read()
+        for adf_file in adf_files:
+            basename = os.path.splitext(os.path.basename(adf_file))[0]
+            adf_path = os.path.join(input_dir, adf_file)
 
-            if app_path_conbo["jar"] is None and region_data[:4] == b"PK\x03\x04":
-                app_path_conbo["jar"] = region_path
-            elif app_path_conbo["jar"] is not None and app_path_conbo["sp"] is None:
-                try:
-                    (adf_dict, _, _) = perse_adf(region_data, model_config["start_adf"])
-
-                    #print(adf_dict)
-                    if not all(key in adf_dict for key in ["AppName", "PackageURL", "AppClass", "LastModified"]):
-                        raise Exception("Missing required value.")
-                    if not adf_dict["PackageURL"].startswith("http://"):
-                        raise Exception("PackageURL is not URL")
-                    
-                    app_path_conbo["adf"] = region_path
-                except Exception as e:
-                    app_path_conbo["sp"] = region_path
-                    #print(region_file, e)
-            elif app_path_conbo["jar"] is not None and app_path_conbo["sp"] is not None:
-                app_path_conbo["adf"] = region_path
+            app_path_conbo = {
+                "jar": None,
+                "sp": None,
+                "adf": None,
+            }
             
-            if app_path_conbo["adf"] is not None:
-                app_path_conbos.append(copy.deepcopy(app_path_conbo))
-                app_path_conbo = {
-                    "jar": None,
-                    "sp": None,
-                    "adf": None,
-                }
+            app_path_conbo["adf"] = adf_path
+            if os.path.isfile(scr_path := os.path.join(input_dir, f"{basename}.scr")):
+                app_path_conbo["sp"] = scr_path
+
+            if os.path.isfile(jar_path := os.path.join(input_dir, f"{basename}.jar")):
+                app_path_conbo["jar"] = jar_path
+            else:
+                print(f"no file: {jar_path}")
+                continue
+
+            app_path_conbos.append(copy.deepcopy(app_path_conbo))
 
     elif dirtype == DirType.SSR200:
         adf_dir = os.path.join(input_dir, "ADF")
