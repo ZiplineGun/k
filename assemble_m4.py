@@ -142,8 +142,6 @@ def detect_extension(data):
         return "adf"
     elif data[:4] == b"MMMD":
         return "mmf"
-    elif data[:6] in [b"<html>", b"<HTML>"]:
-        return "html"
     elif data[:3] in [b"CWS", b"FWS", b"ZWS"]:
         return "swf"
     elif data[4:8] == b"ftyp":
@@ -155,6 +153,9 @@ def detect_extension(data):
              return "jad"
         except UnicodeDecodeError:
             pass
+
+    if any(tag in data for tag in [b"<html>", b"<HTML>", b"<head>", b"<HEAD>"]):
+            return "html"
         
     return "bin"
 
