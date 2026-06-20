@@ -1,0 +1,255 @@
+import argparse
+from pathlib import Path
+import os
+import re
+import posixpath
+import re
+from urllib.parse import urlsplit, unquote, urlparse, parse_qs
+
+
+FLAVOR_DEF = {
+    b"NF30PS00": { # P900i, p903itv
+        "meta_start": 0xC,
+        "url_size_off": 0x4,
+        "response_off": 0x8,
+        "file_off": 0xC,
+        "content_off": 0x20,
+    },
+    b"NF32PS00": { # N902i
+        "meta_start": 0xC,
+        "url_size_off": 0x4,
+        "response_off": 0xC,
+        "file_off": 0x10,
+        "content_off": 0x34,
+    },
+}
+
+def flatten_img_src(html):
+    def repl(m):
+        prefix = m.group("prefix")
+        quote = m.group("quote") or '"'
+        src = m.group("src")
+
+        parts = urlsplit(src)
+        qs = parse_qs(parts.query)
+
+        filename = ""
+
+        if qs.get("fnm"):
+            filename = os.path.basename(unquote(qs["fnm"][-1]))
+
+        if not filename:
+            filename = os.path.basename(unquote(parts.path))
+
+        if not filename:
+            return m.group(0)
+
+        return f'{prefix}{quote}./{filename}{quote}'
+
+    return re.sub(
+        r'(?P<prefix><img\b[^>]*?\bsrc=)(?P<quote>["\']?)(?P<src>.*?)(?P=quote)(?=[\s>/])',
+        repl,
+        html,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
+
+
+def get_ext(response):
+    if not (m := re.search(r"Content-Type:\s*(.+)", response, re.IGNORECASE)):
+        return "bin"
+    
+    content_type = m.group(1).lower()
+
+    mime_to_ext = {
+        "text/html": "html",
+        "application/xhtml+xml": "html",
+        "image/gif": "gif",
+        "image/jpeg": "jpeg",
+        "image/png": "png",
+        "application/x-shockwave-flash": "swf"
+    }
+
+    for mime, ext in mime_to_ext.items():
+        if mime in content_type:
+            return ext
+            
+    return "bin"
+
+
+def get_html_title(html):
+    m = re.search(r"<title>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+
+    if m is None or m[1].isspace():
+        return None
+    else:
+        return m[1].strip()
+
+
+TRANSLATION_TABLE = str.maketrans({
+    "\\": "＼",
+    "/": "／",
+    ":": "：",
+    "*": "＊",
+    "?": "？",
+    '"': "”",
+    "<": "＜",
+    ">": "＞",
+    "|": "｜",
+})
+
+def sanitize_filename(filename: str) -> str:
+    sanitized = filename.translate(TRANSLATION_TABLE)
+
+    sanitized = "".join(
+        " " if ord(c) < 32 else c
+        for c in sanitized
+    )
+
+    if not sanitized:
+        sanitized = "untitled"
+
+    return sanitized
+
+
+def get_charset(html_bytes):
+    m = re.search(
+        br'charset\s*=\s*["\']?\s*([^"\'\s;>]+)',
+        html_bytes[:4096],
+        re.IGNORECASE
+    )
+    if m:
+        return m.group(1).decode("ascii", "ignore").lower()
+    return None
+
+
+def extract_parameter_filename(url):
+    parsed_url = urlparse(url)
+    params = parse_qs(parsed_url.query)
+    
+    if 'fnm' not in params:
+        return None
+    
+    filename = params['fnm'][0]
+    
+    pattern = r'^[^&?\/\\:*?"<>|]+\.(html|htm|gif|jpeg|jpg|png)$'
+    
+    if re.match(pattern, filename, re.IGNORECASE):
+        return filename
+    
+    return None
+
+
+def convert(input_path, out_dir, change_image_url, verbose):
+    with open(input_path, "rb") as inf:
+        cs = inf.read()
+
+    magic = cs[:8]
+    if magic not in [b"NF30PS00", b"NF32PS00"]:
+        raise ValueError(f"wrong magic {magic}")
+
+    os.makedirs(out_dir, exist_ok=True)
+
+    meta_start = FLAVOR_DEF[magic]["meta_start"]
+    url_size_off = FLAVOR_DEF[magic]["url_size_off"]
+    response_off = FLAVOR_DEF[magic]["response_off"]
+    file_off = FLAVOR_DEF[magic]["file_off"]
+    content_off = FLAVOR_DEF[magic]["content_off"]
+
+    off = meta_start
+    cs_size = len(cs)
+    while off < cs_size:
+        url_size = int.from_bytes(cs[off + url_size_off : off + url_size_off + 0x4], "little")
+        response_size = int.from_bytes(cs[off + response_off : off + response_off + 0x4], "little")
+        file_size = int.from_bytes(cs[off + file_off : off + file_off + 0x4], "little")
+        content_start= off + content_off
+        if verbose:
+            print(f"{hex(off)}, url_size: {hex(url_size)}, response_size: {hex(response_size)}, file_size: {hex(file_size)}, content_start: {hex(content_start)}")
+
+        if sum([url_size, response_size, file_size]) == 0:
+            break
+
+        
+        url = cs[content_start : content_start + url_size].decode("ascii")
+
+        response_start = content_start + url_size
+        response = cs[response_start : response_start + response_size]
+
+        file_start = response_start + response_size
+        file = cs[file_start : file_start + file_size]
+
+        
+        filename = urlparse(url).path
+        filename = posixpath.basename(filename)
+        if not filename or filename.isspace():
+            if (filename := extract_parameter_filename(url)) is None:
+                filename = "index"
+
+        basename = os.path.splitext(filename)[0]
+
+        if not filename.lower().endswith((".html", ".htm", ".gif", ".jpeg", ".jpg", ".png")):
+            filename = basename + "." + get_ext(response.decode("cp932"))
+
+        with open(out_dir / f"{filename}.txt", "wb") as outf:
+            outf.write(f"URL: {url}\n\n".encode("ascii") + response)
+
+        if filename.endswith(("html", "htm")) and change_image_url:
+            try:
+                encoding = get_charset(file) or "cp932"
+                encoding = "cp932" if encoding.lower() in ["shift-jis", "shiftjis", "shift_jis", "x-sjis"] else encoding
+                html = flatten_img_src(file.decode(encoding))
+                title = get_html_title(file.decode(encoding))
+                file = html.encode(encoding)
+                print(f"Title: {title}")
+                print(f"Encoding: {encoding}")
+            except Exception as e:
+                print(f"HTML Conversion Failed: {e}")
+
+        with open(out_dir / f"{filename}", "wb") as outf:
+            outf.write(file)
+        
+        print(Path(url), "=>", filename)
+        if verbose:
+            print()
+
+        off = file_start + file_size
+    
+    print(f"output => {out_dir}")
+
+
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=""
+    )
+    parser.add_argument("input", help="Input CS file or directory to extract.")
+    parser.add_argument("-o", "--out_dir", default=None, help="Output directory for extracted files.")
+    parser.add_argument("-c", "--change-image-url", action="store_true", help="Change image URLs to local relative paths in extracted HTML files.")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Print verbose processing information.")
+    args = parser.parse_args()
+
+    input_ = Path(args.input)
+
+
+
+    if input_.is_dir():
+        for p in input_.iterdir():
+            if p.is_file():
+                if args.out_dir is None:
+                    out_dir = p.with_name(p.stem + "_extracted")
+                else:
+                    out_dir = Path(args.out_dir)
+
+                try:   
+                    print(f"\n[{p.name}]")
+                    convert(p, out_dir, args.change_image_url, args.verbose)
+                except Exception as e:
+                    print(e)
+    else:
+        if args.out_dir is None:
+            out_dir = input_.with_name(input_.stem + "_extracted")
+        else:
+            out_dir = Path(args.out_dir)
+        convert(input_, out_dir, args.change_image_url, args.verbose)
