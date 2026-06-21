@@ -27,32 +27,36 @@ FLAVOR_DEF = {
 def flatten_img_src(html):
     def repl(m):
         prefix = m.group("prefix")
-        quote = m.group("quote") or '"'
-        src = m.group("src")
+        quote = m.group("quote")
+        src = m.group("srcq") if m.group("srcq") is not None else m.group("srcu")
 
         parts = urlsplit(src)
-        qs = parse_qs(parts.query)
-
-        filename = ""
-
-        if qs.get("fnm"):
-            filename = os.path.basename(unquote(qs["fnm"][-1]))
-
+        qs = parse_qs(parts.query, encoding=encoding)
+        
+        filename = os.path.basename(unquote(parts.path, encoding=encoding))
+        
         if not filename:
-            filename = os.path.basename(unquote(parts.path))
+            for vs in qs.values():
+                for v in vs:
+                    exts_str = "|".join([f"\\{ext}" for ext in (".gif", ".jpeg", ".jpg", ".png")])
+                    if (m2 := re.search(rf"(.+({exts_str}))", v)) is not None:
+                        filename = m2[1]
+                        print(filename)
 
         if not filename:
             return m.group(0)
 
-        return f'{prefix}{quote}./{filename}{quote}'
+        new_src = f"./{filename}"
+        if quote:
+            return f'{prefix}{quote}{new_src}{quote}'
+        return f"{prefix}{new_src}"
 
     return re.sub(
-        r'(?P<prefix><img\b[^>]*?\bsrc=)(?P<quote>["\']?)(?P<src>.*?)(?P=quote)(?=[\s>/])',
+        r'(?P<prefix><img\b[^>]*?\bsrc\s*=\s*)(?:(?P<quote>["\'])(?P<srcq>.*?)(?P=quote)|(?P<srcu>[^>\s]+))(?=[\s>/])',
         repl,
         html,
         flags=re.IGNORECASE | re.DOTALL
     )
-
 
 
 def get_ext(response):
@@ -123,16 +127,16 @@ def get_charset(html_bytes):
     return None
 
 
-def extract_parameter_filename(url):
+def extract_parameter_filename(url, encoding):
     parsed_url = urlparse(url)
-    params = parse_qs(parsed_url.query)
+    params = parse_qs(parsed_url.query, encoding=encoding)
     
     if 'fnm' not in params:
         return None
     
     filename = params['fnm'][0]
     
-    pattern = r'^[^&?\/\\:*?"<>|]+\.(html|htm|gif|jpeg|jpg|png)$'
+    pattern = r'^[^&?\/\\:*?"<>|]+\.(html|htm|gif|jpeg|jpg|png|swf)$'
     
     if re.match(pattern, filename, re.IGNORECASE):
         return filename
@@ -158,6 +162,7 @@ def convert(input_path, out_dir, change_image_url, verbose):
 
     off = meta_start
     cs_size = len(cs)
+    encoding = "cp932"
     while off < cs_size:
         url_size = int.from_bytes(cs[off + url_size_off : off + url_size_off + 0x4], "little")
         response_size = int.from_bytes(cs[off + response_off : off + response_off + 0x4], "little")
@@ -168,7 +173,6 @@ def convert(input_path, out_dir, change_image_url, verbose):
 
         if sum([url_size, response_size, file_size]) == 0:
             break
-
         
         url = cs[content_start : content_start + url_size].decode("ascii")
 
@@ -178,16 +182,15 @@ def convert(input_path, out_dir, change_image_url, verbose):
         file_start = response_start + response_size
         file = cs[file_start : file_start + file_size]
 
-        
-        filename = urlparse(url).path
+        filename = unquote(urlparse(url).path, encoding=encoding)
         filename = posixpath.basename(filename)
         if not filename or filename.isspace():
-            if (filename := extract_parameter_filename(url)) is None:
+            if (filename := extract_parameter_filename(url, encoding)) is None:
                 filename = "index"
 
         basename = os.path.splitext(filename)[0]
 
-        if not filename.lower().endswith((".html", ".htm", ".gif", ".jpeg", ".jpg", ".png")):
+        if not filename.lower().endswith((".html", ".htm", ".gif", ".jpeg", ".jpg", ".png", "swf")):
             filename = basename + "." + get_ext(response.decode("cp932"))
 
         with open(out_dir / f"{filename}.txt", "wb") as outf:
@@ -197,11 +200,12 @@ def convert(input_path, out_dir, change_image_url, verbose):
             try:
                 encoding = get_charset(file) or "cp932"
                 encoding = "cp932" if encoding.lower() in ["shift-jis", "shiftjis", "shift_jis", "x-sjis"] else encoding
-                html = flatten_img_src(file.decode(encoding))
-                title = get_html_title(file.decode(encoding))
-                file = html.encode(encoding)
+                html = file.decode(encoding)
+                html = flatten_img_src(html, encoding=encoding)
+                title = get_html_title(html)
                 print(f"Title: {title}")
                 print(f"Encoding: {encoding}")
+                file = html.encode(encoding)
             except Exception as e:
                 print(f"HTML Conversion Failed: {e}")
 
@@ -214,7 +218,7 @@ def convert(input_path, out_dir, change_image_url, verbose):
 
         off = file_start + file_size
     
-    print(f"output => {out_dir}")
+    print(f"\noutput => {out_dir}")
 
 
 
@@ -232,8 +236,6 @@ if __name__ == "__main__":
 
     input_ = Path(args.input)
 
-
-
     if input_.is_dir():
         for p in input_.iterdir():
             if p.is_file():
@@ -246,7 +248,7 @@ if __name__ == "__main__":
                     print(f"\n[{p.name}]")
                     convert(p, out_dir, args.change_image_url, args.verbose)
                 except Exception as e:
-                    print(e)
+                    print("Error:", e)
     else:
         if args.out_dir is None:
             out_dir = input_.with_name(input_.stem + "_extracted")
