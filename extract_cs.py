@@ -24,7 +24,7 @@ FLAVOR_DEF = {
     },
 }
 
-def flatten_img_src(html):
+def flatten_img_src(html, encoding):
     def repl(m):
         prefix = m.group("prefix")
         quote = m.group("quote")
@@ -198,7 +198,7 @@ def convert(input_path, out_dir, change_image_url, verbose):
 
         if filename.endswith(("html", "htm")) and change_image_url:
             try:
-                encoding = get_charset(file) or "cp932"
+                encoding = get_charset(file) or encoding
                 encoding = "cp932" if encoding.lower() in ["shift-jis", "shiftjis", "shift_jis", "x-sjis"] else encoding
                 html = file.decode(encoding)
                 html = flatten_img_src(html, encoding=encoding)
