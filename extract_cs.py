@@ -27,6 +27,7 @@ FLAVOR_DEF = {
 EXTS = (".htm", ".html", ".gif", ".jpeg", ".jpg", ".png", ".swf", ".mld")
 
 def flatten_img_src(html, encoding):
+    IMAGE_EXTS = (".gif", ".jpeg", ".jpg", ".png")
     EXTS_RE = re.compile(r"([^/\\?#]+(?:\.gif|\.jpeg|\.jpg|\.png))", flags=re.IGNORECASE)
 
     def repl(m):
@@ -39,7 +40,7 @@ def flatten_img_src(html, encoding):
         
         filename = os.path.basename(unquote(parts.path, encoding=encoding))
         
-        if not filename:
+        if not filename or not filename.endswith(IMAGE_EXTS):
             for v in [v for vs in qs.values() for v in vs]:
                 if (m2 := EXTS_RE.search(v)) is not None:
                     filename = m2[1]
@@ -194,9 +195,13 @@ def convert(input_path, out_dir, change_image_url, verbose):
 
         filename = unquote(urlparse(url).path, encoding=encoding)
         filename = posixpath.basename(filename)
+
+        if not filename.lower().endswith(EXTS):
+            if (tmp := get_parameter_filename(url, encoding)) is not None:
+                filename = tmp
+        
         if not filename or filename.isspace():
-            if (filename := get_parameter_filename(url, encoding)) is None:
-                filename = "index"
+            filename = "index"
 
         basename = os.path.splitext(filename)[0]
 
