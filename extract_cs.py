@@ -15,7 +15,7 @@ FLAVOR_DEF = {
         "file_off": 0xC,
         "content_off": 0x20,
     },
-    b"NF32PS00": { # N902i
+    b"NF32PS00": { # N902i, N903i, N905i
         "meta_start": 0xC,
         "url_size_off": 0x4,
         "response_off": 0xC,
@@ -118,7 +118,7 @@ def sanitize_filename(filename: str) -> str:
     return sanitized
 
 
-def get_charset(html_bytes):
+def get_charset_from_html(html_bytes):
     m = re.search(
         br'charset\s*=\s*["\']?\s*([^"\'\s;>]+)',
         html_bytes[:4096],
@@ -127,6 +127,15 @@ def get_charset(html_bytes):
     if m:
         return m.group(1).decode("ascii", "ignore").lower()
     return None
+
+
+def get_charset_from_header(header_bytes):
+    m = re.search(
+        br"Content-Type:[^\r\n]*charset\s*=\s*([^\s;\r\n]+)",
+        header_bytes,
+        re.I,
+    )
+    return m.group(1).decode("ascii", "ignore") if m else None
 
 
 def get_parameter_filename(url, encoding):
@@ -149,7 +158,7 @@ def convert(input_path, out_dir, change_image_url, verbose):
         cs = inf.read()
 
     magic = cs[:8]
-    if magic not in [b"NF30PS00", b"NF32PS00"]:
+    if magic not in FLAVOR_DEF.keys():
         raise ValueError(f"wrong magic {magic}")
 
     os.makedirs(out_dir, exist_ok=True)
@@ -177,10 +186,11 @@ def convert(input_path, out_dir, change_image_url, verbose):
         url = cs[content_start : content_start + url_size].decode("ascii")
 
         response_start = content_start + url_size
-        response = cs[response_start : response_start + response_size]
+        response_data = cs[response_start : response_start + response_size]
+        response_text = response_data.decode("cp932")
 
         file_start = response_start + response_size
-        file = cs[file_start : file_start + file_size]
+        file_data = cs[file_start : file_start + file_size]
 
         filename = unquote(urlparse(url).path, encoding=encoding)
         filename = posixpath.basename(filename)
@@ -191,26 +201,27 @@ def convert(input_path, out_dir, change_image_url, verbose):
         basename = os.path.splitext(filename)[0]
 
         if not filename.lower().endswith(EXTS):
-            filename = basename + "." + get_ext(response.decode("cp932"))
+            filename = basename + "." + get_ext(response_text)
 
         with open(out_dir / f"{filename}.txt", "wb") as outf:
-            outf.write(f"URL: {url}\n\n".encode("ascii") + response)
+            outf.write(f"URL: {url}\n\n".encode("ascii") + response_data)
 
-        if filename.endswith(("html", "htm")) and change_image_url:
+        if filename.endswith((".html", ".htm")) and change_image_url:
             try:
-                encoding = get_charset(file) or encoding
+                encoding = get_charset_from_header(response_data) or get_charset_from_html(file_data) or encoding
                 encoding = "cp932" if encoding.lower() in ["shift-jis", "shiftjis", "shift_jis", "x-sjis"] else encoding
-                html = file.decode(encoding)
+                html = file_data.decode(encoding)
                 html = flatten_img_src(html, encoding=encoding)
                 title = get_html_title(html)
                 print(f"Title: {title}")
                 print(f"Encoding: {encoding}")
-                file = html.encode(encoding)
+                file_data = html.encode(encoding)
             except Exception as e:
                 print(f"HTML Conversion Failed: {e}")
+                raise e
 
         with open(out_dir / f"{filename}", "wb") as outf:
-            outf.write(file)
+            outf.write(file_data)
         
         print(Path(url), "=>", filename)
         if verbose:
