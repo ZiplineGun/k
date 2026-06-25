@@ -22,13 +22,15 @@ FLAVOR_DEF = {
         "file_off": 0x10,
         "content_off": 0x34,
     },
+    
 }
 
-EXTS = (".htm", ".html", ".gif", ".jpeg", ".jpg", ".png", ".swf", ".mld")
+EXTS = (".htm", ".html", ".gif", ".jpeg", ".jpg", ".png", ".bmp", ".swf", ".mld")
 
 def flatten_img_src(html, encoding):
-    IMAGE_EXTS = (".gif", ".jpeg", ".jpg", ".png")
-    EXTS_RE = re.compile(r"([^/\\?#]+(?:\.gif|\.jpeg|\.jpg|\.png))", flags=re.IGNORECASE)
+    IMAGE_EXTS = (".gif", ".jpeg", ".jpg", ".png", ".bmp")
+    exts_str = "|".join([f"\\{ext}" for ext in IMAGE_EXTS])
+    EXTS_RE = re.compile(rf"([^/\\?#]+(?:{exts_str}))", flags=re.IGNORECASE)
 
     def repl(m):
         prefix = m.group("prefix")
@@ -74,7 +76,11 @@ def get_ext(response):
         "image/gif": "gif",
         "image/jpeg": "jpeg",
         "image/png": "png",
-        "application/x-shockwave-flash": "swf"
+        "image/bmp": "bmp",
+        "image/x-ms-bmp": "bmp",
+        "application/x-shockwave-flash": "swf",
+        "audio/midi": "mid",
+        "audio/mid": "mid",
     }
 
     for mime, ext in mime_to_ext.items():
@@ -209,7 +215,7 @@ def convert(input_path, out_dir, change_image_url, verbose):
             filename = basename + "." + get_ext(response_text)
 
         with open(out_dir / f"{filename}.txt", "wb") as outf:
-            outf.write(f"URL: {url}\n\n".encode("ascii") + response_data)
+            outf.write(f"[URL]\n{url}\n\n[Response Header]\n".encode("ascii") + response_data)
 
         if filename.endswith((".html", ".htm")) and change_image_url:
             try:
@@ -223,7 +229,6 @@ def convert(input_path, out_dir, change_image_url, verbose):
                 file_data = html.encode(encoding)
             except Exception as e:
                 print(f"HTML Conversion Failed: {e}")
-                raise e
 
         with open(out_dir / f"{filename}", "wb") as outf:
             outf.write(file_data)
