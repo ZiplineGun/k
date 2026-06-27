@@ -17,8 +17,6 @@ def detect_extension(data):
         return "mld"
     elif data[:4] == b"MMMD":
         return "mmf"
-    elif data.find(b"MIDlet-Name:") != -1:
-        return "jad"
     elif data[:3] in [b"CWS", b"FWS", b"ZWS"]:
         return "swf"
     elif data[:6] in [b"GIF89a", b"GIF87a"]:
@@ -31,12 +29,6 @@ def detect_extension(data):
         return "tar"
     elif data[:4] == b"RIFF" and data[8:0x10] == b"QLCMfmt ":
         return "qcp"
-
-    # try:
-    #     data.decode("cp932")
-    #     return "txt"
-    # except:
-    #     pass
 
     return None
     
