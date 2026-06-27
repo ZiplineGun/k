@@ -27,7 +27,11 @@ def detect_extension(data):
         return "png"
     elif data[4:8] == b"ftyp":
         return "3gp"
-        
+    elif data[257:262] == b"ustar":
+        return "tar"
+    elif data[:4] == b"RIFF" and data[8:0x10] == b"QLCMfmt ":
+        return "qcp"
+
     # try:
     #     data.decode("cp932")
     #     return "txt"
@@ -39,7 +43,7 @@ def detect_extension(data):
 
 def process(file):
     with open(file, "rb") as f:
-        data = f.read(0x30)
+        data = f.read(262)
     ext = detect_extension(data)
     if ext:
         os.rename(file, os.path.splitext(file)[0] + "." + ext)
