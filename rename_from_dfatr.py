@@ -13,7 +13,7 @@ args = parser.parse_args()
 
 input_dir = Path(args.db_dir)
 with open(args.database, "rb") as inf:
-    database = inf.read()
+    db = inf.read()
 out_dir = Path(args.out_dir or os.path.join(args.db_dir, "renamed"))
 os.makedirs(out_dir, exist_ok=True)
 
@@ -65,7 +65,10 @@ NAME_START = 0x6A
 EXT_START = 0x92
 META_SIZE = 0xA0
 
-database = database[:0x3FC0] + database[0x4000:]
+database = bytearray()
+for off in range(0, len(db), 0x4000):
+    database +=  db[off : off + 0x3FC0]
+
 for i, off in enumerate(range(0, len(database), META_SIZE)):
     meta = database[off : off + META_SIZE]
     if (name_end := meta.find(b"\x00", NAME_START)) in [-1, 0]:
