@@ -107,7 +107,7 @@ for p in input_dir.iterdir():
     else:
         print("wrong filesize: id", hex(file_id), "expected", filesize, "but", hex(os.path.getsize(p)))
         try:
-            shutil.copy2(p, out_dir / p.stem)
+            shutil.copy2(p, out_dir / p.name)
         except OSError as e :
             print(e, dest)
 
