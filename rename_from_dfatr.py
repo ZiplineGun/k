@@ -5,8 +5,8 @@ import re
 import shutil
 
 parser = argparse.ArgumentParser(description="")
-parser.add_argument("db_dir", help=r"READWRITE2/DB")
-parser.add_argument("database", help="DFATR.BIN")
+parser.add_argument("db_dir", help="DB directory from READWRITE2's FAT")
+parser.add_argument("database", help="DFATR.BIN from READWRITE1's FAT")
 parser.add_argument("out_dir", default=None)
 args = parser.parse_args()
 
