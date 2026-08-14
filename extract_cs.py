@@ -12,14 +12,16 @@ FLAVOR_DEF = {
         "meta_start": 0xC,
         "url_size_off": 0x4,
         "response_off": 0x8,
-        "file_off": 0xC,
+        "content_size_off": 0xC,
+        "cert_size_off": 0x14,
         "content_off": 0x20,
     },
     b"NF32PS00": { # N902i, N903i, N905i
         "meta_start": 0xC,
         "url_size_off": 0x4,
         "response_off": 0xC,
-        "file_off": 0x10,
+        "content_size_off": 0x10,
+        "cert_size_off": 0x18, # unconfirmed
         "content_off": 0x34,
     },
     
@@ -41,15 +43,14 @@ def flatten_img_src(html, encoding):
         qs = parse_qs(parts.query, encoding=encoding)
         
         filename = os.path.basename(unquote(parts.path, encoding=encoding))
+        if not filename:
+            return m.group(0)
         
-        if not filename or not filename.endswith(IMAGE_EXTS):
+        if not filename.lower().endswith(IMAGE_EXTS):
             for v in [v for vs in qs.values() for v in vs]:
                 if (m2 := EXTS_RE.search(v)) is not None:
                     filename = m2[1]
                     break
-
-        if not filename:
-            return m.group(0)
 
         new_src = f"./{filename}"
         if quote:
@@ -58,6 +59,41 @@ def flatten_img_src(html, encoding):
 
     return re.sub(
         r'(?P<prefix><img\b[^>]*?\bsrc\s*=\s*)(?:(?P<quote>["\'])(?P<srcq>.*?)(?P=quote)|(?P<srcu>[^>\s]+))(?=[\s>/])',
+        repl,
+        html,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
+
+def flatten_swf_src(html, encoding):
+    EXTS_RE = re.compile(rf"([^/\\?#]+(?:\\.swf))", flags=re.IGNORECASE)
+
+    def repl(m):
+        prefix = m.group("prefix")
+        quote = m.group("quote")
+        src = m.group("srcq") if m.group("srcq") is not None else m.group("srcu")
+
+        parts = urlsplit(src)
+        qs = parse_qs(parts.query, encoding=encoding)
+        
+        filename = os.path.basename(unquote(parts.path, encoding=encoding))
+        if not filename:
+            return m.group(0)
+        
+        if not filename.lower().endswith(".swf"):
+            for v in [v for vs in qs.values() for v in vs]:
+                if (m2 := EXTS_RE.search(v)) is not None:
+                    filename = m2[1]
+                    break
+
+        new_src = f"./{filename}"
+        if quote:
+            return f'{prefix}{quote}{new_src}{quote}'
+        return f"{prefix}{new_src}"
+    
+    # object data=filename.swf type="application/x-shockwave-flash"
+    return re.sub(
+        r'(?P<prefix><object\b[^>]*?\bdata\s*=\s*)(?:(?P<quote>["\'])(?P<srcq>.*?)(?P=quote)|(?P<srcu>[^>\s]+))(?=[\s>/])',
         repl,
         html,
         flags=re.IGNORECASE | re.DOTALL
@@ -89,6 +125,29 @@ def get_ext(response):
             
     return "bin"
 
+
+def detect_extension(data):
+    if (
+        data[:2] == b"\xFF\xD8" and
+        data[-2:] == b"\xFF\xD9"
+    ):
+        return "jpg"
+    elif data[:4] == b"melo":
+        return "mld"
+    elif data[:3] in [b"CWS", b"FWS", b"ZWS"]:
+        return "swf"
+    elif data[:6] in [b"GIF89a", b"GIF87a"]:
+        return "gif"
+    elif data[:4] == b"\x89\x50\x4E\x47":
+        return "png"
+    elif data[4:8] == b"ftyp":
+        return "3gp"
+    elif data[257:262] == b"ustar":
+        return "tar"
+    elif data[:4] == b"RIFF" and data[8:0x10] == b"QLCMfmt ":
+        return "qcp"
+
+    return None
 
 def get_html_title(html):
     m = re.search(r"<title>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
@@ -173,7 +232,8 @@ def convert(input_path, out_dir, change_image_url, verbose):
     meta_start = FLAVOR_DEF[magic]["meta_start"]
     url_size_off = FLAVOR_DEF[magic]["url_size_off"]
     response_off = FLAVOR_DEF[magic]["response_off"]
-    file_off = FLAVOR_DEF[magic]["file_off"]
+    content_size_off = FLAVOR_DEF[magic]["content_size_off"]
+    cert_size_off = FLAVOR_DEF[magic]["cert_size_off"]
     content_off = FLAVOR_DEF[magic]["content_off"]
 
     off = meta_start
@@ -182,10 +242,12 @@ def convert(input_path, out_dir, change_image_url, verbose):
     while off < cs_size:
         url_size = int.from_bytes(cs[off + url_size_off : off + url_size_off + 0x4], "little")
         response_size = int.from_bytes(cs[off + response_off : off + response_off + 0x4], "little")
-        file_size = int.from_bytes(cs[off + file_off : off + file_off + 0x4], "little")
+        file_size = int.from_bytes(cs[off + content_size_off : off + content_size_off + 0x4], "little")
+        cert_size = int.from_bytes(cs[off + cert_size_off : off + cert_size_off + 0x4], "little")
         content_start= off + content_off
+
         if verbose:
-            print(f"{hex(off)}, url_size: {hex(url_size)}, response_size: {hex(response_size)}, file_size: {hex(file_size)}, content_start: {hex(content_start)}")
+            print(f"off: {hex(off)}, url_size: {hex(url_size)}, response_size: {hex(response_size)}, file_size: {hex(file_size)}, cert_size: {hex(cert_size)}")
 
         if sum([url_size, response_size, file_size]) == 0:
             break
@@ -198,6 +260,9 @@ def convert(input_path, out_dir, change_image_url, verbose):
 
         file_start = response_start + response_size
         file_data = cs[file_start : file_start + file_size]
+
+        cert_start = file_start + file_size
+        cert_data = cs[cert_start : cert_start + cert_size]
 
         filename = unquote(urlparse(url).path, encoding=encoding)
         filename = posixpath.basename(filename)
@@ -214,8 +279,12 @@ def convert(input_path, out_dir, change_image_url, verbose):
         if not filename.lower().endswith(EXTS):
             filename = basename + "." + get_ext(response_text)
 
-        with open(out_dir / f"{filename}.txt", "wb") as outf:
+        with open(out_dir / f"{filename}.log", "wb") as outf:
             outf.write(f"[URL]\n{url}\n\n[Response Header]\n".encode("ascii") + response_data)
+
+        if cert_size > 0:
+            with open(out_dir / f"{filename}.bin", "wb") as outf:
+                outf.write(cert_data)
 
         if filename.endswith((".html", ".htm")) and change_image_url:
             try:
@@ -223,6 +292,8 @@ def convert(input_path, out_dir, change_image_url, verbose):
                 encoding = "cp932" if encoding.lower() in ["shift-jis", "shiftjis", "shift_jis", "x-sjis"] else encoding
                 html = file_data.decode(encoding)
                 html = flatten_img_src(html, encoding=encoding)
+                html = flatten_swf_src(html, encoding=encoding)
+                html = re.sub(r"<base\b.*?>", "", html, flags=re.IGNORECASE)
                 title = get_html_title(html)
                 print(f"Title: {title}")
                 print(f"Encoding: {encoding}")
@@ -237,7 +308,7 @@ def convert(input_path, out_dir, change_image_url, verbose):
         if verbose:
             print()
 
-        off = file_start + file_size
+        off = cert_start + cert_size
     
     print(f"\noutput => {out_dir}")
 
