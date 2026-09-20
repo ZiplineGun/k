@@ -88,6 +88,7 @@ def sanitize_filename(filename: str) -> str:
 
     return sanitized
 
+
 def get_available_path(path):
     path = Path(path)
 
@@ -128,7 +129,7 @@ for off in range(0, len(fs_data), 0x200):
         sub =  int.from_bytes(fs_data[off + 3 : off + 5], "big")
         id = fs_data[off + 5]
         size = int.from_bytes(fs_data[off + 0x8 : off + 0xC], "big")
-        print(hex(main), hex(sub), hex(id), fs_data[off + 0xC : off + 0x10], hex(off), size)
+        #print(hex(main), hex(sub), hex(id), fs_data[off + 0xC : off + 0x10], hex(off), size)
 
         file_data = fs_data[off + 0xC : off + 0xC + size]
         file_type = next(filter(lambda x: x["main_category"] == main and x["sub_category"] == sub, file_config), None)
@@ -161,7 +162,7 @@ for off in range(0, len(fs_data), 0x200):
         file_name = sanitize_filename(file_name)
         out_path = get_available_path(out_dir / file_name)
 
-        print(file_name)
+        #print(file_name)
         with open(out_path, "wb") as outf:
             outf.write(file_data)
 
