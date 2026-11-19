@@ -30,6 +30,13 @@ CONFIGS = {
         "start_spsize": 0x5C,
         "start_adf": 0x6C,
     },
+    "N505i": {
+        "device_name": "N505i",
+        "draw_area": "240x240",
+        "sp_type": SpType.MULTI,
+        "start_spsize": 0x88,
+        "start_adf": 0xD0,
+    },
     "N505iS": {
         "device_name": "N505iS",
         "draw_area": "240x240",
