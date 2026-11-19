@@ -5,6 +5,7 @@ import re
 PRINT_FS = None
 RENAME = True # vodafone
 PRINT_FILE_ID = None # vodafone
+PRINT_ALL_INFO = False
 
 V601N_TYPE_DEF = {
     "jar": 512,
@@ -46,6 +47,26 @@ MOVA_TYPE_DEF =  {
         },
         "adf": {
             "genre": [9],
+            "name_start": None,
+            "file_start": 0x0,
+            "dir_name": "JAVA",
+        },
+    },
+    "N505i": {
+        "jar": {
+            "genre": [23],
+            "name_start": None,
+            "file_start": 0x0,
+            "dir_name": "JAVA",
+        },
+        "scr": {
+            "genre": [24],
+            "name_start": None,
+            "file_start": 0x0,
+            "dir_name": "JAVA",
+        },
+        "adf": {
+            "genre": [25],
             "name_start": None,
             "file_start": 0x0,
             "dir_name": "JAVA",
@@ -227,28 +248,6 @@ def filter_vspace(vspace):
 
     return filterd_vspace, rest_vspace
 
-# def filter_vspace(vspace):
-#     filterd_vspace = {}
-#     rest_vspace = {}
-
-#     max_info = {}
-#     for fs, chunk_infos in vspace.items():
-#         for chunk_info in chunk_infos:
-
-#             if (chunk_info["marker"] == 0xFC and chunk_info["flag"] != 1 
-#                 and chunk_info["flag"] > max_info.get(fs, {}).get(chunk_info["chunk_id"], 0)
-#             ):
-#                 max_info.setdefault(fs, {})[chunk_info["chunk_id"]] = chunk_info["flag"]
-
-#     for fs, chunk_infos in vspace.items():
-#         for chunk_info in chunk_infos:
-#             if (chunk_info["marker"] == 0xFC and chunk_info["flag"] == max_info.get(fs, {}).get(chunk_info["chunk_id"])):
-#                 filterd_vspace.setdefault(fs, []).append(chunk_info)
-#             else:
-#                 rest_vspace.setdefault(fs, []).append(chunk_info)
-
-#     return filterd_vspace, rest_vspace
-
 
 def get_html_title(html_data):
     html = html_data.decode("cp932", errors="ignore")
@@ -283,7 +282,7 @@ if __name__ == "__main__":
     parser.add_argument("input")
     parser.add_argument("-o", "--output", default=None)
     parser.add_argument("-e","--detect-extension", action=argparse.BooleanOptionalAction, help="Adds an extension by detecting the file type from its magic number. Misclassification is possible.")
-    parser.add_argument("-r", "--rename-mode", choices=["V601N", "N504i", "N506i"], help="Rename file using the name obtained from headers or metadata.")
+    parser.add_argument("-r", "--rename-mode", choices=["V601N", "N504i", "N505i", "N506i"], help="Rename file using the name obtained from headers or metadata.")
     parser.add_argument("-nw","--no-warning", action="store_true", help="No warning is displayed.")
     parser.add_argument(
         "-u",
@@ -307,120 +306,105 @@ if __name__ == "__main__":
     filtered_vspace, rest_vspace = filter_vspace(filtered_vspace)
 
     file_infos = {}
-    for fs, chunk_infos in filtered_vspace.items():
-        file_data = bytearray()
-        genre = fs & 0x0000FF
-        id = (fs & 0xFFFF00) >> 8
+    def output(vspace, undelete):
+        for fs, chunk_infos in vspace.items():
+            file_data = bytearray()
+            genre = fs & 0x0000FF
+            id = (fs & 0xFFFF00) >> 8
 
-        if fs == PRINT_FS:
-            print("\n[Selected]")
-            for chunk_info in chunk_infos:
-                print(
-                    f"{chunk_info['meta_off']:07X}" + ":",
-                    " ".join([f"{byte:0=2X}" for byte in chunk_info['metadata']]), 
-                    f"(chunk_id={hex(chunk_info['chunk_id'])}, size={chunk_info['size']}, flag={chunk_info['flag']})"
-                )
+            if not undelete and fs == PRINT_FS:
+                print("\n[Selected]")
+                for chunk_info in chunk_infos:
+                    print(
+                        f"{chunk_info['meta_off']:07X}" + ":",
+                        " ".join([f"{byte:0=2X}" for byte in chunk_info['metadata']]), 
+                        f"(chunk_id={hex(chunk_info['chunk_id'])}, size={chunk_info['size']}, flag={chunk_info['flag']})"
+                    )
 
-        for chunk_info in sorted(chunk_infos, key=lambda x: (x["chunk_id"], -x["flag"])):
-            file_data += chunk_info["chunk"]
-            if fs == PRINT_FS:
-                print(chunk_info["flag"])
+            for chunk_info in sorted(chunk_infos, key=lambda x: (x["chunk_id"], -x["flag"])):
+                file_data += chunk_info["chunk"]
 
-        out_basename = None
-        ext = None
-        parent_dir = None
-        if args.rename_mode == "V601N":
-            sub_genre = int.from_bytes(file_data[:2], "little")
-            sub_id = int.from_bytes(file_data[2:4], "little")
+            out_basename = None
+            ext = None
+            parent_dir = None
+            if args.rename_mode == "V601N":
+                sub_genre = int.from_bytes(file_data[:2], "little")
+                sub_id = int.from_bytes(file_data[2:4], "little")
 
-            if sub_genre == 256 or sub_genre in V601N_TYPE_DEF.values():
-                file_data = file_data[4:]
-            
-            if genre == 9:
-                ext = "html"
-            elif args.detect_extension:
-                ext = detect_extension(file_data)
-            else:
-                ext = "bin"
-            
-            if ext == "html":
-                out_basename = get_html_title(file_data)
-            else:
-                out_basename = f"region_{genre:03d}_{id:05d}_sub_{sub_genre:03d}_{sub_id:03d}"
-
-            file_infos[fs] = {
-                "sub_genre": sub_genre,
-                "sub_id": sub_id,
-                "file_name": f"{out_basename}.{ext}",
-            }
-        elif args.rename_mode in ["N504i", "N506i"]:
-            type_def = MOVA_TYPE_DEF[args.rename_mode]
-            for type, info in type_def.items():
-                if genre in info["genre"]:
-                    parent_dir = info["dir_name"]
-
-                    if type in ["jar", "scr", "adf"]:
-                        out_basename = f"{id:03d}"
-                    elif type == "html":
-                        out_basename = get_html_title(file_data)
-                    elif info["name_start"] is not None and file_data[info["name_start"]] != 0:
-                        out_basename = carve_filename(file_data, info["name_start"])
-
-                    file_data = file_data[info["file_start"] :]
-
-                    if type == "image":
-                        ext = detect_extension(file_data)
-                    else:
-                        ext = type
-
-                    break
-
-        if ext is None:
-            ext = detect_extension(file_data) if args.detect_extension else "bin"
-
-        if out_basename is None:
-            out_basename = f"region_{genre:03d}_{id:05d}"
-        else:
-            out_basename = sanitize_filename(out_basename)
-
-        if parent_dir is not None:
-            out_basename = os.path.join(parent_dir, out_basename)
-            os.makedirs(os.path.join(out_dir, parent_dir), exist_ok=True)
-    
-        # avoid duplicate filename
-        cnt = 2
-        out_path = os.path.join(out_dir, f"{out_basename}.{ext}")
-        while os.path.isfile(out_path):
-            out_path = os.path.join(out_dir, f"{out_basename} ({cnt}).{ext}")
-            cnt += 1
-
-        with open(out_path, "wb") as outf:
-            outf.write(file_data)
-
-
-    if args.undelete:
-        for fs, chunk_infos in rest_vspace.items():
-            cnt = 1
-            for chunk_info in chunk_infos:
-                file_data = chunk_info["chunk"]
-                genre = fs & 0x0000FF
-                id = (fs & 0xFFFF00) >> 8
+                if sub_genre == 256 or sub_genre in V601N_TYPE_DEF.values():
+                    file_data = file_data[4:]
                 
+                if genre == 9:
+                    ext = "html"
+                elif args.detect_extension:
+                    ext = detect_extension(file_data)
+                else:
+                    ext = "bin"
+                
+                if ext == "html":
+                    out_basename = get_html_title(file_data)
+                else:
+                    out_basename = f"region_{genre:03d}_{id:05d}_sub_{sub_genre:03d}_{sub_id:03d}"
+            elif args.rename_mode in MOVA_TYPE_DEF.keys():
+                type_def = MOVA_TYPE_DEF[args.rename_mode]
+                for type, info in type_def.items():
+                    if genre in info["genre"]:
+                        parent_dir = info["dir_name"]
+
+                        if type in ["jar", "scr", "adf"]:
+                            out_basename = f"{id:03d}"
+                        elif type == "html":
+                            out_basename = get_html_title(file_data)
+                        elif info["name_start"] is not None and file_data[info["name_start"]] != 0:
+                            out_basename = carve_filename(file_data, info["name_start"])
+
+                        file_data = file_data[info["file_start"] :]
+
+                        if type == "image":
+                            ext = detect_extension(file_data)
+                        else:
+                            ext = type
+
+                        break
+
+            if ext is None:
                 ext = detect_extension(file_data) if args.detect_extension else "bin"
 
-                if cnt == 1:
-                    out_name = f"region_{genre:03d}_{id:05d}_recovered"
-                else:
-                    out_name = f"region_{genre:03d}_{id:05d}_recovered ({cnt})"
+            if out_basename is None:
+                out_basename = f"region_{genre:03d}_{id:05d}"
+            else:
+                out_basename = sanitize_filename(out_basename)
+
+            if undelete:
+                out_basename += "_recovered"
+
+            if parent_dir is not None:
+                out_basename = os.path.join(parent_dir, out_basename)
+                os.makedirs(os.path.join(out_dir, parent_dir), exist_ok=True)
+
+            # avoid duplicate filename
+            cnt = 2
+            out_path = os.path.join(out_dir, f"{out_basename}.{ext}")
+            while os.path.isfile(out_path):
+                out_path = os.path.join(out_dir, f"{out_basename} ({cnt}).{ext}")
                 cnt += 1
 
-                out_path = os.path.join(out_dir, f"{out_name}.{ext}")
-                
-                with open(out_path, "wb") as outf:
-                    outf.write(file_data)
+            with open(out_path, "wb") as outf:
+                outf.write(file_data)
 
-                    if int.from_bytes(file_data[:2], "little") == 256 and int.from_bytes(file_data[2:4], "little") == PRINT_FILE_ID:
-                        print(out_name, " ".join([f"{b:02X}" for b in chunk_info["metadata"]]), hex(chunk_info["meta_off"]))
+            if args.rename_mode == "V601N" and not undelete:
+                file_infos[fs] = {
+                    "sub_genre": sub_genre,
+                    "sub_id": sub_id,
+                    "file_name": f"{out_basename}.{ext}",
+                }
+            
+            if PRINT_ALL_INFO:
+                print(f"{out_basename}.{ext}", fs)
+
+    output(filtered_vspace, undelete=False)
+    if args.undelete:
+        output(rest_vspace, undelete=True)
 
     # rename base on table file
     if RENAME and args.rename_mode == "V601N":
